@@ -110,48 +110,46 @@ def process_single_message(service, msg):
     logger.info("Engaging AI Agent for all emails.")
      
     try:
-         # Initialize Agent
-         scenario = load_scenario(DEFAULT_SCENARIO_PATH)
-         rubric = load_rubric(DEFAULT_RUBRIC_PATH)
-         
-         api_key = os.environ.get("OPENAI_API_KEY")
-         if not api_key:
-             logger.error("Missing OPENAI_API_KEY")
-             return
+        # Initialize Agent
+        scenario = load_scenario(DEFAULT_SCENARIO_PATH)
+        rubric = load_rubric(DEFAULT_RUBRIC_PATH)
+        
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            logger.error("Missing OPENAI_API_KEY")
+            return
 
-         agent = EmailAgent(
-             model="gpt-4o",
-             temperature=0.2,
-             scenario=scenario,
-             api_key=api_key
-         )
-             
-             # Create Student Email Object
-             student_email = EmailMessage(
-                 sender=sender,
-                 subject=subject,
-                 body=body
-             )
-             
-             # Build Prior Thread (Mocking context if needed, or fetching previous emails)
-             # For this simple version, we assume the student is starting or we just treat it as a single turn.
-             # Ideally, we should fetch the threadId key from Gmail to rebuild context.
-             prior_thread = agent.build_starter_thread() 
-             
-             # Generate Response
-             result = agent.evaluate_and_respond(
-                 prior_thread=prior_thread,
-                 student_email=student_email,
-                 rubric=rubric.items
-             )
-             
-             # Send Reply
-             reply_body = f"{result.counterpart_reply}\n\n--- FEEDBACK ---\n{result.grading.overall_comment}\n\nScore: {result.grading.total_score}/{result.grading.max_total_score}"
-             
-             send_reply(service, msg, reply_body)
-             
-         except Exception as e:
-             logger.error(f"Error during AI processing: {e}")
+        agent = EmailAgent(
+            model="gpt-4o",
+            temperature=0.2,
+            scenario=scenario,
+            api_key=api_key
+        )
+        
+        # Create Student Email Object
+        student_email = EmailMessage(
+            sender=sender,
+            subject=subject,
+            body=body
+        )
+        
+        # Build Prior Thread (Mocking context if needed, or fetching previous emails)
+        # For this simple version, we assume the student is starting or we just treat it as a single turn.
+        # Ideally, we should fetch the threadId key from Gmail to rebuild context.
+        prior_thread = agent.build_starter_thread() 
+        
+        # Process interaction
+        result = agent.process_interaction(student_email, prior_thread)
+        
+        # Send reply
+        if result.response:
+            logger.info(f"Generated response for {sender}. Sending reply.")
+            send_reply(service, msg, result.response)
+        else:
+            logger.info(f"No response generated for {sender} (Score: {result.total_score if result.total_score else 'N/A'}).")
+            
+    except Exception as e:
+        logger.error(f"Error during AI processing: {e}")
 
 def send_reply(service, original_msg, reply_text):
     """Sends a reply via Gmail API."""
