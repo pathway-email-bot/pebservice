@@ -1,0 +1,47 @@
+name: Deploy to Cloud Functions
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: 'pathway-email-bot-6543'
+  REGION: 'us-central1'
+  FUNCTION_NAME: 'process_email'
+  TOPIC_NAME: 'email-notifications'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Deploy to Cloud Functions
+        id: deploy
+        uses: google-github-actions/deploy-cloud-functions@v2
+        with:
+          name: '${{ env.FUNCTION_NAME }}'
+          runtime: 'python311'
+          region: '${{ env.REGION }}'
+          source_dir: '.'
+          entry_point: 'process_email'
+          event_trigger_type: 'google.pubsub.topic.publish'
+          event_trigger_resource: 'projects/${{ env.PROJECT_ID }}/topics/${{ env.TOPIC_NAME }}'
+          env_vars: |-
+            GMAIL_CLIENT_ID=${{ secrets.GMAIL_CLIENT_ID }}
+            GMAIL_CLIENT_SECRET=${{ secrets.GMAIL_CLIENT_SECRET }}
+            GMAIL_REFRESH_TOKEN=${{ secrets.GMAIL_REFRESH_TOKEN }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
