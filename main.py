@@ -19,7 +19,19 @@ logger = logging.getLogger(__name__)
 print("GLOBAL: Loading main.py - imports starting...", flush=True)
 
 # Constants
-BASE_DIR = Path(__file__).resolve().parent / "email_agent"
+# Dynamic path resolution to handle local vs cloud structure discrepancies
+current_dir = Path(__file__).resolve().parent
+print(f"DEBUG: current_dir={current_dir}, name={current_dir.name}", flush=True)
+
+if current_dir.name == "email_agent":
+    # If main.py is somehow running from inside email_agent (Cloud quirk?)
+    BASE_DIR = current_dir
+else:
+    # Normal local structure: main.py is in root, email_agent is subdir
+    BASE_DIR = current_dir / "email_agent"
+
+print(f"DEBUG: BASE_DIR={BASE_DIR}", flush=True)
+
 DEFAULT_SCENARIO_PATH = BASE_DIR / "scenarios/missed_remote_standup.json"
 DEFAULT_RUBRIC_PATH = BASE_DIR / "rubrics/default.json"
 
