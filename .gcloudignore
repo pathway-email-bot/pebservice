@@ -15,3 +15,7 @@
 
 node_modules
 #!include:.gitignore
+
+# Override .gitignore's *.json exclusion for runtime-needed files
+!email_agent/scenarios/*.json
+!email_agent/rubrics/*.json
