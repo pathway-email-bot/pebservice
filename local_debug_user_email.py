@@ -1,3 +1,13 @@
+"""
+LOCAL DEBUG SCRIPT - DO NOT ADD TO CI PIPELINE
+
+This script is for local testing of the email agent only.
+It calls the OpenAI API, which costs money on every run.
+Running this in CI would incur unnecessary API charges.
+
+Usage:
+    python local_debug_user_email.py
+"""
 import os
 import sys
 from email_agent.email_agent import EmailAgent, EmailMessage

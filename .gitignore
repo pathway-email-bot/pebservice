@@ -6,3 +6,7 @@ __pycache__/
 *.json
 !package.json
 .DS_Store
+auth_url*.txt
+token_capture.txt
+watch_out.txt
+temp_restore/

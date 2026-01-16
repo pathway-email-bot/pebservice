@@ -5,7 +5,6 @@ import logging
 from pathlib import Path
 
 import functions_framework
-from google.cloud import pubsub_v1
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
@@ -178,7 +177,6 @@ def send_reply(service, original_msg, reply_text):
                           f"\r\n" \
                           f"{reply_text}"
         
-        raw_message = base64.urlsafe_b64decode(message_content.encode("utf-8")).decode("utf-8") # Wait, encoding to base64 for API
         raw_message = base64.urlsafe_b64encode(message_content.encode("utf-8")).decode("utf-8")
         
         body = {'raw': raw_message, 'threadId': thread_id}
@@ -190,8 +188,7 @@ def send_reply(service, original_msg, reply_text):
         logger.error(f"Error sending reply: {e}")
 
 def get_gmail_service():
-    """Builds Gmail service using environment variables."""
-    # ... (Keep existing implementation)
+    """Builds Gmail service using OAuth credentials from environment variables."""
     try:
         client_id = os.environ.get('GMAIL_CLIENT_ID')
         client_secret = os.environ.get('GMAIL_CLIENT_SECRET')

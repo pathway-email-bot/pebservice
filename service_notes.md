@@ -20,11 +20,8 @@ All cloud resources will be created in the `pathway-email-bot` (or TBD) project.
 ## GitHub Configuration
 ### Secrets
 Manage these via `gh secret set`:
-- `GCP_PROJECT_ID`: ID of the Google Cloud Project.
 - `GCP_PROJECT_ID`: ID of the Google Cloud Project (e.g., `pathway-email-bot-6543`).
 - `GCP_SA_KEY`: JSON service account key for deployment.
-- `AI_MODEL_API_KEY`: API key for the AI model/agent.
-- `GMAIL_REFRESH_TOKEN`: (If applicable) for OAuth2 flow.
 - `OPENAI_API_KEY`: API key for the AI model/agent.
 - `GMAIL_CLIENT_ID`: OAuth Client ID for Gmail integration.
 - `GMAIL_CLIENT_SECRET`: OAuth Client Secret for Gmail integration.
