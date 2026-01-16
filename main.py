@@ -13,8 +13,9 @@ from email_agent.rubric_loader import load_rubric
 from email_agent.email_agent import EmailAgent, EmailMessage
 
 # Setup Logging
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
+# Setup Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 print("GLOBAL: Loading main.py - imports starting...", flush=True)
 
 # Constants
