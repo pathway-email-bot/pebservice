@@ -10,10 +10,10 @@ All cloud resources will be created in the `pathway-email-bot` (or TBD) project.
 | **GCP Project** | `pathway-email-bot-6543` | Main project hosting all resources. | $0.00 |
 | **Gmail API** | `Enabled` | Must be enabled for the service account. | $0.00 |
 | **Pub/Sub Topic** | `email-notifications` | Receives push notifications from Gmail. | ~$0.00 |
-| **Pub/Sub Subscription** | `[CF_PUSH_SUBSCRIPTION]` | Triggers the Cloud Function. | ~$0.00 |
+| **Pub/Sub Subscription** | `eventarc-us-central1-process-email-479061-sub-493` | Triggers the Cloud Function (Eventarc-managed). | ~$0.00 |
 | **Cloud Function** | `process_email` | The core AI logic and email handler. | ~$0.10 - $0.50 |
-| **Service Account** | `peb-service-account` | Credentials used by the Cloud Function. | $0.00 |
-| **AI Model API** | `[AI_MODEL_NAME]` | LLM for generating responses. | $0.50 - $2.00* |
+| **Service Account** | `687061619628-compute@developer.gserviceaccount.com` | Default Compute Engine SA used by Cloud Function. | $0.00 |
+| **AI Model API** | `gpt-4o` (OpenAI) | LLM for generating responses. | $0.50 - $2.00* |
 
 *\*Costs vary based on model choice and token usage.*
 
