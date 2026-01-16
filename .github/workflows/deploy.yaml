@@ -37,19 +37,13 @@ jobs:
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      - name: Deploy to Cloud Functions
-        id: deploy
-        uses: google-github-actions/deploy-cloud-functions@v2
-        with:
-          name: '${{ env.FUNCTION_NAME }}'
-          runtime: 'python311'
-          region: '${{ env.REGION }}'
-          source_dir: '.'
-          entry_point: 'process_email'
-          event_trigger_type: 'google.pubsub.topic.publish'
-          event_trigger_resource: 'projects/${{ env.PROJECT_ID }}/topics/${{ env.TOPIC_NAME }}'
-          env_vars: |-
-            GMAIL_CLIENT_ID=${{ secrets.GMAIL_CLIENT_ID }}
-            GMAIL_CLIENT_SECRET=${{ secrets.GMAIL_CLIENT_SECRET }}
-            GMAIL_REFRESH_TOKEN=${{ secrets.GMAIL_REFRESH_TOKEN }}
-            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+      - name: Deploy to Cloud Functions (Gen 2)
+        run: |
+          gcloud functions deploy ${{ env.FUNCTION_NAME }} \
+            --gen2 \
+            --region=${{ env.REGION }} \
+            --runtime=python311 \
+            --source=. \
+            --entry-point=process_email \
+            --trigger-topic=${{ env.TOPIC_NAME }} \
+            --set-env-vars="GMAIL_CLIENT_ID=${{ secrets.GMAIL_CLIENT_ID }},GMAIL_CLIENT_SECRET=${{ secrets.GMAIL_CLIENT_SECRET }},GMAIL_REFRESH_TOKEN=${{ secrets.GMAIL_REFRESH_TOKEN }},OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}"
