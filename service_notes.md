@@ -21,10 +21,26 @@ All cloud resources will be created in the `pathway-email-bot` (or TBD) project.
 ### Secrets
 Manage these via `gh secret set`:
 - `GCP_PROJECT_ID`: ID of the Google Cloud Project.
+- `GCP_PROJECT_ID`: ID of the Google Cloud Project (e.g., `pathway-email-bot-6543`).
 - `GCP_SA_KEY`: JSON service account key for deployment.
 - `AI_MODEL_API_KEY`: API key for the AI model/agent.
 - `GMAIL_REFRESH_TOKEN`: (If applicable) for OAuth2 flow.
-
+- `OPENAI_API_KEY`: API key for the AI model/agent.
+- `GMAIL_CLIENT_ID`: OAuth Client ID for Gmail integration.
+- `GMAIL_CLIENT_SECRET`: OAuth Client Secret for Gmail integration.
+- `GMAIL_REFRESH_TOKEN`: Long-lived refresh token for the Gmail account.
+### Setup Flow & Token Generation
+To set up or refresh your credentials:
+1. **GCP Setup**: 
+   - Enable Gmail, Cloud Functions, Pub/Sub, and Cloud Build APIs.
+   - Create a **Desktop app** OAuth client to get the Client ID and Secret.
+2. **Local Auth**:
+   - Use `get_token.py` to perform the OAuth flow.
+   - Run `python get_token.py`. This will open a browser to authorize the bot's Gmail account and save the refresh token to `token_capture.txt` (which is git-ignored).
+3. **Set Secrets**:
+   - Use the `gh` CLI or the script itself to push these to GitHub Secrets.
+### Infrastructure Deployment
+Use `setup_infra.ps1` to create the project, enable APIs, and configure the service account and topics.
 ### Actions
 - Deployment workflows should use the `google-github-actions/auth` for secure authentication.
 - Monitor workflow runs via `gh run list`.
