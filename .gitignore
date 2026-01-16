@@ -3,10 +3,13 @@ __pycache__/
 *$py.class
 .venv/
 .env
-*.json
-!package.json
+
 .DS_Store
 auth_url*.txt
 token_capture.txt
 watch_out.txt
 temp_restore/
+
+# Secrets
+*.secret
+*.secret.json
