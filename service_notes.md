@@ -3,19 +3,26 @@
 The goal of this service is to provide instant and highly reliable service while minimizing costs. The system is designed to be **virtually free** for ~100 invocations per month.
 
 ## Google Cloud Resources
-All cloud resources will be created in the `pathway-email-bot` (or TBD) project.
 
-| Resource Type | Placeholder/Name | Description | Est. Cost / 1k Interactions |
-| :--- | :--- | :--- | :--- |
-| **GCP Project** | `pathway-email-bot-6543` | Main project hosting all resources. | $0.00 |
-| **Gmail API** | `Enabled` | Must be enabled for the service account. | $0.00 |
-| **Pub/Sub Topic** | `email-notifications` | Receives push notifications from Gmail. | ~$0.00 |
-| **Pub/Sub Subscription** | `eventarc-us-central1-process-email-479061-sub-493` | Triggers the Cloud Function (Eventarc-managed). | ~$0.00 |
-| **Cloud Function** | `process_email` | The core AI logic and email handler. | ~$0.10 - $0.50 |
-| **Service Account** | `687061619628-compute@developer.gserviceaccount.com` | Default Compute Engine SA used by Cloud Function. | $0.00 |
-| **AI Model API** | `gpt-4o` (OpenAI) | LLM for generating responses. | $0.50 - $2.00* |
+All resources are hosted in project **`pathway-email-bot-6543`**.
 
-*\*Costs vary based on model choice and token usage.*
+| Resource | Name / Value | Description |
+|:---|:---|:---|
+| **Pub/Sub Topic** | `email-notifications` | Receives Gmail push notifications |
+| **Pub/Sub Subscription** | `eventarc-us-central1-process-email-479061-sub-493` | Eventarc-managed, triggers Cloud Function |
+| **Cloud Function** | `process_email` | Core AI logic and email handler |
+| **Service Account** | `687061619628-compute@developer.gserviceaccount.com` | Default Compute SA used by function |
+| **AI Model** | `gpt-4o` (OpenAI) | LLM for grading and responses |
+
+### Required APIs
+- `gmail.googleapis.com` - Read/send emails
+- `cloudfunctions.googleapis.com` - Cloud Functions
+- `pubsub.googleapis.com` - Pub/Sub messaging
+- `run.googleapis.com` - Cloud Run (Gen 2 functions)
+- `cloudbuild.googleapis.com` - Build and deploy
+
+### Gmail Watch Configuration
+The Gmail API uses push notifications via `users.watch()`. This must be renewed every 7 days. Use `setup_watch.py` to configure or renew the watch on `pathwayemailbot@gmail.com`.
 
 ## GitHub Configuration
 ### Secrets
