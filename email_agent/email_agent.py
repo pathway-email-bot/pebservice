@@ -10,7 +10,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableSequence
 from langchain_openai import ChatOpenAI
 
-from .scenarios import Scenario
+from .scenario_models import Scenario
 from .rubric import GLOBAL_RUBRIC, RubricItem
 
 

@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 import yaml
 
-from .scenarios import Scenario
+from .scenario_models import Scenario
 
 
 def _load_raw(path: Path) -> Dict[str, Any]:
