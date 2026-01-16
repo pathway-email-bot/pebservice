@@ -11,7 +11,7 @@ Usage:
 import os
 import sys
 from email_agent.email_agent import EmailAgent, EmailMessage
-from email_agent.scenarios import Scenario
+from email_agent.scenario_models import Scenario
 from email_agent.rubric import GLOBAL_RUBRIC
 
 def test_user_email():

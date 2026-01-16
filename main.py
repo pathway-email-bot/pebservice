@@ -13,13 +13,16 @@ from email_agent.rubric_loader import load_rubric
 from email_agent.email_agent import EmailAgent, EmailMessage
 
 # Setup Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
+print("GLOBAL: Loading main.py - imports starting...", flush=True)
 
 # Constants
 BASE_DIR = Path(__file__).resolve().parent / "email_agent"
 DEFAULT_SCENARIO_PATH = BASE_DIR / "scenarios/missed_remote_standup.json"
 DEFAULT_RUBRIC_PATH = BASE_DIR / "rubrics/default.json"
+
+print("GLOBAL: Imports and constants ready.", flush=True)
 
 @functions_framework.cloud_event
 def process_email(cloud_event):
@@ -27,13 +30,15 @@ def process_email(cloud_event):
     Triggered from a message on a Cloud Pub/Sub topic.
     The message usually comes from Gmail push notifications.
     """
+    print("ENTRY: process_email called.", flush=True)
+    
     # 1. Decode the Pub/Sub message
     data = cloud_event.data
     pubsub_message = data.get("message", {})
     
     if "data" in pubsub_message:
         message_data = base64.b64decode(pubsub_message["data"]).decode("utf-8")
-        logger.info(f"Received Pub/Sub message data: {message_data}")
+        print(f"DEBUG: Received message data: {message_data}", flush=True)
         
         try:
             notification = json.loads(message_data)
@@ -41,30 +46,28 @@ def process_email(cloud_event):
             history_id = notification.get("historyId")
             
             if not history_id:
-                logger.warning("No historyId found in notification.")
+                print("WARNING: No historyId found.", flush=True)
                 return "OK"
                 
-            logger.info(f"Notification for {email_address}, historyId: {history_id}")
+            print(f"DEBUG: Notification for {email_address}, historyId: {history_id}", flush=True)
             
             # 2. Initialize Gmail Service
             service = get_gmail_service()
             if not service:
-                logger.error("Failed to initialize Gmail service.")
+                print("ERROR: Failed to initialize Gmail service.", flush=True)
                 return "OK"
 
             # 3. List history to find the message ID
             try:
-                # We need to get history since the provided historyId, or simply check recent messages if history is too old (404)
-                # For simplicity, we assume robust history id for now, but log catch blocks
-                logger.info(f"Fetching history startHistoryId={history_id}")
+                print(f"DEBUG: Fetching history startHistoryId={history_id}", flush=True)
                 history = service.users().history().list(userId='me', startHistoryId=history_id).execute()
                 changes = history.get('history', [])
                 
                 if not changes:
-                    logger.info("No history changes found in response.")
+                    print("DEBUG: No history changes found.", flush=True)
                     return "OK"
 
-                logger.info(f"Found {len(changes)} history change records.")
+                print(f"DEBUG: Found {len(changes)} changes.", flush=True)
 
                 found_message = False
                 for change in changes:
@@ -72,22 +75,22 @@ def process_email(cloud_event):
                     for record in messages_added:
                         message_id = record.get('message', {}).get('id')
                         if message_id:
-                             logger.info(f"Found added message ID: {message_id}")
+                             print(f"DEBUG: Found added message ID: {message_id}", flush=True)
                              # 4. Get full message details
                              msg = service.users().messages().get(userId='me', id=message_id, format='full').execute()
                              process_single_message(service, msg)
                              found_message = True
                 
                 if not found_message:
-                    logger.info("No 'messagesAdded' events found in history changes.")
+                    print("DEBUG: No 'messagesAdded' events found.", flush=True)
 
             except Exception as e:
-                logger.error(f"Error fetching history or messages: {e}", exc_info=True)
+                print(f"ERROR: Error fetching history: {e}", flush=True)
             
         except json.JSONDecodeError:
-            logger.error("Error decoding JSON from Pub/Sub message.")
+            print("ERROR: JSON decode error.", flush=True)
     else:
-        logger.warning("No data in Pub/Sub message.")
+        print("WARNING: No data in Pub/Sub message.", flush=True)
 
     return "OK"
 
