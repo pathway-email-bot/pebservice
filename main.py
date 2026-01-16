@@ -64,8 +64,23 @@ def process_email(cloud_event):
                 changes = history.get('history', [])
                 
                 if not changes:
-                    print("DEBUG: No history changes found.", flush=True)
-                    return "OK"
+                    print("DEBUG: No history changes found. Attempting fallback to latest message.", flush=True)
+                    # Fallback: Get the most recent message
+                    try:
+                        response = service.users().messages().list(userId='me', maxResults=1).execute()
+                        messages = response.get('messages', [])
+                        if messages:
+                            latest_msg_id = messages[0]['id']
+                            print(f"DEBUG: Fallback found message ID: {latest_msg_id}", flush=True)
+                            msg = service.users().messages().get(userId='me', id=latest_msg_id, format='full').execute()
+                            process_single_message(service, msg)
+                            return "OK"
+                        else:
+                            print("DEBUG: Fallback found no messages either.", flush=True)
+                            return "OK"
+                    except Exception as fb_e:
+                        print(f"ERROR: Fallback failed: {fb_e}", flush=True)
+                        return "OK"
 
                 print(f"DEBUG: Found {len(changes)} changes.", flush=True)
 
