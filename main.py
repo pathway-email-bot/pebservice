@@ -224,16 +224,21 @@ def send_reply(service, original_msg, reply_text):
         
         sender_email = next((h['value'] for h in headers if h['name'] == 'From'), "")
         
+        # Get the Message-ID from the original email for proper threading
+        message_id = next((h['value'] for h in headers if h['name'].lower() == 'message-id'), None)
+        
         logger.info(f"Constructing reply message for thread: {thread_id}")
 
-        # Prepare Message
-        # Note: Proper MIME construction is better, but simple dictionary works for text
+        # Prepare Message with proper threading headers
         message_content = f"To: {sender_email}\r\n" \
-                          f"Subject: Re: {subject}\r\n" \
-                          f"In-Reply-To: {original_msg['id']}\r\n" \
-                          f"References: {original_msg['id']}\r\n" \
-                          f"\r\n" \
-                          f"{reply_text}"
+                          f"Subject: Re: {subject}\r\n"
+        
+        # Add threading headers if we have the original Message-ID
+        if message_id:
+            message_content += f"In-Reply-To: {message_id}\r\n" \
+                               f"References: {message_id}\r\n"
+        
+        message_content += f"\r\n{reply_text}"
         
         raw_message = base64.urlsafe_b64encode(message_content.encode("utf-8")).decode("utf-8")
         
