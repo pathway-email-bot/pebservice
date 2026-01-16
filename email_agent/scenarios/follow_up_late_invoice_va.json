@@ -1,0 +1,13 @@
+{
+  "name": "follow_up_late_invoice_va",
+  "description": "Freelance virtual assistant has sent an invoice that is now late and needs to follow up politely and professionally.",
+  "environment": "freelance_client",
+  "counterpart_role": "Small business owner client",
+  "student_task": "You are a freelance virtual assistant. You sent an invoice to your client two weeks ago for completed work. The payment is now late, and you have not heard anything. Write a polite follow-up email. Mention the invoice, the date you sent it, the type of work you completed, and ask kindly for an update on the payment. Use simple, respectful language without sounding angry or desperate.",
+  "counterpart_style": "You are a small business owner who sometimes gets busy and forgets to pay on time. You appreciate clear, professional reminders that include the details you need.",
+  "grading_focus": "Focus on whether the student clearly mentions the invoice and date, keeps a polite and calm tone, and makes a clear request for an update on payment.",
+  "starter_sender_name": "Alyssa Ward (Client)",
+  "starter_subject": "Invoice for last month’s support",
+  "starter_email_body": null,
+  "starter_email_generation_hint": "Write a short email from the client acknowledging receipt of an invoice and saying they will take a look, but without giving a payment date."
+}

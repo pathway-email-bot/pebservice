@@ -1,0 +1,13 @@
+{
+  "name": "clarify_multistep_process",
+  "description": "New remote administrative assistant receives instructions for a multi-step process and needs to ask for clarification on a few parts.",
+  "environment": "remote_workplace",
+  "counterpart_role": "Operations lead",
+  "student_task": "You are a new remote administrative assistant. Your operations lead sent you a long message describing a multi-step process for handling customer requests, but a few parts are unclear to you. Write an email to your operations lead. Thank them for the instructions, briefly summarize what you understood, and ask 2–3 clear questions about the parts you do not understand. Use simple English and show that you want to learn and avoid mistakes.",
+  "counterpart_style": "You are an operations lead who wants the process followed correctly. You appreciate when people summarize what they understood and then ask specific questions.",
+  "grading_focus": "Focus on whether the student gives a short summary of their understanding, asks specific questions, and keeps a respectful, learning-focused tone.",
+  "starter_sender_name": "Ravi Shah (Operations Lead)",
+  "starter_subject": "Process for handling customer requests",
+  "starter_email_body": null,
+  "starter_email_generation_hint": "Write an email from the operations lead explaining a multi-step process in one long message, with several details that could be confusing or easy to mix up."
+}

@@ -1,0 +1,13 @@
+{
+  "name": "correct_error_in_report",
+  "description": "Remote data entry worker notices they sent a spreadsheet with a small mistake and needs to send a correction email.",
+  "environment": "remote_workplace",
+  "counterpart_role": "Operations supervisor",
+  "student_task": "You are a remote data entry worker. Yesterday you sent your supervisor a spreadsheet with some numbers. Today you see that one small part of the report has an error. Write an email to your supervisor. Briefly apologize, explain in simple English what was wrong, attach or mention the corrected file, and clearly point out what has changed. Show that you take responsibility and care about accuracy.",
+  "counterpart_style": "You are an operations supervisor who values honesty and accuracy. You prefer people tell you about mistakes quickly with clear corrections.",
+  "grading_focus": "Focus on whether the student is honest about the mistake, keeps the explanation short and clear, mentions the corrected file, and shows responsibility without long excuses.",
+  "starter_sender_name": "Daniel Green (Operations Supervisor)",
+  "starter_subject": "Yesterday’s data entry file",
+  "starter_email_body": null,
+  "starter_email_generation_hint": "Write a short email from the supervisor thanking the worker for sending the spreadsheet and saying they will review the numbers today."
+}

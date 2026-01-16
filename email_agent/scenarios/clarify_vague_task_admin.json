@@ -1,0 +1,13 @@
+{
+  "name": "clarify_vague_task_admin",
+  "description": "Remote administrative assistant receives a short, unclear request to 'clean up the notes' and needs to ask for clarification without sounding rude or incompetent.",
+  "environment": "remote_workplace",
+  "counterpart_role": "US-based office manager",
+  "student_task": "Your manager sent you a short message asking you to 'clean up the notes from yesterday's meeting' but did not explain what format they want, who will read them, or when they are needed. Write an email to your manager. Politely restate what you think the task is, ask 1–3 clear questions about format and deadline, and confirm that you want to do the work correctly. Use simple, professional English.",
+  "counterpart_style": "You are a busy but fair office manager. You appreciate clear questions and you prefer that people ask instead of guessing. You are direct but polite in your replies.",
+  "grading_focus": "Focus on whether the student is polite, restates their understanding of the task, asks specific questions, and clearly shows they want to do the work correctly and on time.",
+  "starter_sender_name": "Karen Lopez (Office Manager)",
+  "starter_subject": "Notes from yesterday",
+  "starter_email_body": null,
+  "starter_email_generation_hint": "Write a brief email from the office manager asking the assistant to 'clean up the notes from yesterday's meeting' without giving many details about format or deadline."
+}

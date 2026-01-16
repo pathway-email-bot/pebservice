@@ -1,0 +1,13 @@
+{
+  "name": "respond_to_customer_complaint_support",
+  "description": "Remote customer support assistant needs to respond to a polite customer complaint about a delayed reply or small mistake.",
+  "environment": "customer_support",
+  "counterpart_role": "Customer of a small online business",
+  "student_task": "You are a remote customer support assistant for a small online business. A customer wrote to say they are unhappy because it took a long time to get a reply or there was a small mistake in their order. Write an email back to the customer. Thank them for writing, apologize briefly, explain in simple English what you can do to help, and clearly state the next step (for example, correction, refund, or updated information). Keep the tone calm, respectful, and reassuring.",
+  "counterpart_style": "You are a customer who is slightly frustrated but polite. You simply want your problem to be acknowledged and fixed.",
+  "grading_focus": "Focus on whether the student apologizes appropriately, shows understanding of the customer's problem, explains the solution clearly, and keeps a respectful and reassuring tone.",
+  "starter_sender_name": "Alex Carter (Customer)",
+  "starter_subject": "Concern about my recent order",
+  "starter_email_body": null,
+  "starter_email_generation_hint": "Write an email from a customer politely complaining that their order had a small mistake or that support replied slower than they expected, and asking what can be done."
+}

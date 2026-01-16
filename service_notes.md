@@ -48,3 +48,35 @@ Use `setup_infra.ps1` to create the project, enable APIs, and configure the serv
 ### Actions
 - Deployment workflows should use the `google-github-actions/auth` for secure authentication.
 - Monitor workflow runs via `gh run list`.
+
+## Local Development
+
+## Local Development
+
+### 1. Setting up Gmail Watch (Local)
+To receive push notifications or renew the watch locally:
+
+1.  **Prerequisites**:
+    - Ensure you have `client_config.secret.json` (formerly `client_secret.json`) in the root directory.
+    
+2.  **Run Setup**: 
+    ```powershell
+    python setup_watch.py
+    ```
+    - The script will automatically check for credentials.
+    - If environment variables are set, it uses those.
+    - If not, it looks for `token.secret.json`.
+    - If missing, it will launch the browser for you to login and save the token to `token.secret.json`.
+
+### 2. Local Debugging
+To test the AI agent logic without deploying or sending real emails:
+1. Ensure `OPENAI_API_KEY` is set in your environment.
+2. Run the debug script:
+   ```powershell
+   python local_debug_user_email.py
+   ```
+
+### Secret Management
+- **Naming Convention**: All files containing secrets must follow the pattern `*.secret.*` (e.g., `client_config.secret.json`, `token.secret.json`).
+- **Git**: These files are globally ignored by `.gitignore`.
+

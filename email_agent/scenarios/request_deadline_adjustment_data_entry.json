@@ -1,0 +1,13 @@
+{
+  "name": "request_deadline_adjustment_data_entry",
+  "description": "Remote data entry worker is given a large task with an unrealistic one-day deadline and needs to ask for a more realistic timeline.",
+  "environment": "remote_workplace",
+  "counterpart_role": "Project coordinator",
+  "student_task": "You are a remote data entry worker. Your project coordinator has asked you to enter a very large amount of data by tomorrow, but you know it is not realistic to finish everything with good quality. Write an email to your coordinator. Be respectful, explain in simple English how much you can realistically finish, suggest a more realistic timeline, and offer any ideas to help, such as priorities or partial delivery. Show that you care about quality and want to meet expectations.",
+  "counterpart_style": "You are a project coordinator who is under time pressure but open to feedback. You appreciate honest estimates and concrete suggestions.",
+  "grading_focus": "Focus on whether the student stays polite, clearly explains the problem with the deadline, gives a realistic plan, and suggests options instead of just saying ‘no’.",
+  "starter_sender_name": "Lena Brooks (Project Coordinator)",
+  "starter_subject": "Data entry needed by tomorrow",
+  "starter_email_body": null,
+  "starter_email_generation_hint": "Write a short email from the project coordinator assigning a large data entry task and asking for it to be completed by tomorrow, without asking if the timeline is realistic."
+}

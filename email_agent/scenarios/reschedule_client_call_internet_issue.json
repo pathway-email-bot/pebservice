@@ -1,0 +1,13 @@
+{
+  "name": "reschedule_client_call_internet_issue",
+  "description": "Remote virtual assistant has an unstable internet connection before a scheduled client call and needs to reschedule in a professional way.",
+  "environment": "remote_workplace",
+  "counterpart_role": "Small business owner client",
+  "student_task": "You are a remote virtual assistant. You are supposed to join a video call with your client in one hour, but your internet connection is very unstable because of local problems. Write an email to the client. Apologize briefly, explain the situation in simple English, suggest 1–2 alternative times for the call, and offer to send a short written update in the meantime. Show that you respect the client's time.",
+  "counterpart_style": "You are a small business owner who is busy but understanding. You value clear communication and appreciate when someone gives options and respects your time.",
+  "grading_focus": "Focus on whether the student apologizes briefly, explains the problem clearly without long excuses, offers specific new times, and shows respect for the client's schedule.",
+  "starter_sender_name": "Megan Patel (Client)",
+  "starter_subject": "Today’s check-in call",
+  "starter_email_body": null,
+  "starter_email_generation_hint": "Write a short email from the client confirming a video call time for today and saying they are looking forward to a quick check-in about ongoing tasks."
+}

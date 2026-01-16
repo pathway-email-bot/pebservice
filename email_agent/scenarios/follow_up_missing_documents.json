@@ -1,0 +1,13 @@
+{
+  "name": "follow_up_missing_documents",
+  "description": "Remote administrative assistant is waiting for important documents from a client and needs to follow up politely and clearly.",
+  "environment": "remote_workplace",
+  "counterpart_role": "HR coordinator at a partner company",
+  "student_task": "You are a remote administrative assistant. You need several documents from an HR coordinator so you can complete a report, but they have not sent the files yet. Write a follow-up email. Politely remind them what documents you need, explain briefly why they are important, and ask if they can send them by a specific time or tell you when to expect them. Use clear, simple English and a respectful tone.",
+  "counterpart_style": "You are an HR coordinator who receives many emails every day. You appreciate short, organized messages that clearly list what is needed and by when.",
+  "grading_focus": "Focus on whether the student is polite, lists the needed documents clearly, mentions a reasonable time frame, and keeps the email organized and concise.",
+  "starter_sender_name": "Emily Ross (HR Coordinator)",
+  "starter_subject": "Re: Onboarding documents",
+  "starter_email_body": null,
+  "starter_email_generation_hint": "Write a short email from the HR coordinator saying they will send some onboarding documents but not listing them all clearly or giving a specific time."
+}

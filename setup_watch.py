@@ -1,19 +1,11 @@
 import os
-import google.auth
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
+from auth_utils import get_gmail_service
 
 def setup_watch():
-    # Load credentials from environment variables (like the Cloud Function does)
-    creds = Credentials(
-        token=None,  # Not needed for refresh
-        refresh_token=os.environ.get('GMAIL_REFRESH_TOKEN'),
-        client_id=os.environ.get('GMAIL_CLIENT_ID'),
-        client_secret=os.environ.get('GMAIL_CLIENT_SECRET'),
-        token_uri="https://oauth2.googleapis.com/token"
-    )
-
-    service = build('gmail', 'v1', credentials=creds)
+    service = get_gmail_service(role='bot')
+    if not service:
+        print("Failed to obtain 'bot' credentials. Exiting.")
+        return
 
     project_id = "pathway-email-bot-6543"
     topic_name = f"projects/{project_id}/topics/email-notifications"
@@ -25,15 +17,11 @@ def setup_watch():
 
     try:
         response = service.users().watch(userId='me', body=request).execute()
-        print("Success: Successfully set up Gmail watch!")
-        print(f"Response: {response}")
+        print("\nSUCCESS: Successfully set up Gmail watch for 'bot' account!")
+        print(f"Expiration: {response.get('expiration')}")
+        print(f"History ID: {response.get('historyId')}")
     except Exception as e:
         print(f"Error: Failed to set up Gmail watch: {e}")
 
 if __name__ == '__main__':
-    # Add a check for environment variables
-    missing = [v for v in ['GMAIL_REFRESH_TOKEN', 'GMAIL_CLIENT_ID', 'GMAIL_CLIENT_SECRET'] if not os.environ.get(v)]
-    if missing:
-        print(f"ERROR: Missing environment variables: {', '.join(missing)}")
-    else:
-        setup_watch()
+    setup_watch()

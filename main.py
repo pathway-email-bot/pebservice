@@ -21,12 +21,6 @@ logger = logging.getLogger(__name__)
 current_dir = Path(__file__).resolve().parent
 print(f"DEBUG: current_dir={current_dir}", flush=True)
 
-# DEBUG: Dump entire directory structure
-print("DEBUG: Dumping /workspace structure:", flush=True)
-for root, dirs, files in os.walk(str(current_dir)):
-    for name in files:
-         print(f"FILE: {os.path.join(root, name)}", flush=True)
-
 # Attempt to find the 'scenarios' directory
 BASE_DIR = None
 candidates = [
