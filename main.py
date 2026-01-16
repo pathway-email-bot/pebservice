@@ -16,21 +16,29 @@ from email_agent.email_agent import EmailAgent, EmailMessage
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-print("GLOBAL: Loading main.py - imports starting...", flush=True)
-
 # Constants
 # Dynamic path resolution to handle local vs cloud structure discrepancies
 current_dir = Path(__file__).resolve().parent
-print(f"DEBUG: current_dir={current_dir}, name={current_dir.name}", flush=True)
+print(f"DEBUG: current_dir={current_dir}", flush=True)
 
-if current_dir.name == "email_agent":
-    # If main.py is somehow running from inside email_agent (Cloud quirk?)
-    BASE_DIR = current_dir
-else:
-    # Normal local structure: main.py is in root, email_agent is subdir
+# Attempt to find the 'scenarios' directory
+BASE_DIR = None
+candidates = [
+    current_dir / "email_agent",  # Local structure
+    current_dir,                  # Flattened cloud structure?
+]
+
+for candidate in candidates:
+    if (candidate / "scenarios").exists():
+        BASE_DIR = candidate
+        print(f"DEBUG: Found scenarios in {BASE_DIR}", flush=True)
+        break
+
+if not BASE_DIR:
+    print("WARNING: Could not find 'scenarios' directory. Defaulting to email_agent.", flush=True)
     BASE_DIR = current_dir / "email_agent"
 
-print(f"DEBUG: BASE_DIR={BASE_DIR}", flush=True)
+print(f"DEBUG: Final BASE_DIR={BASE_DIR}", flush=True)
 
 DEFAULT_SCENARIO_PATH = BASE_DIR / "scenarios/missed_remote_standup.json"
 DEFAULT_RUBRIC_PATH = BASE_DIR / "rubrics/default.json"
