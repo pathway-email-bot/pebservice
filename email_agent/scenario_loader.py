@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 import yaml
 
+print("DEBUG: Importing Scenario from scenario_models")
 from .scenario_models import Scenario
 
 
