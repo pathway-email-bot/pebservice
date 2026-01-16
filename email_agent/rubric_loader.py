@@ -9,7 +9,7 @@ from typing import Any, Iterable, List, Mapping, Sequence
 
 import yaml
 
-from rubric import RubricItem
+from .rubric import RubricItem
 
 
 @dataclass(frozen=True)

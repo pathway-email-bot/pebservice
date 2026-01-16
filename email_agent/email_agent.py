@@ -1,5 +1,3 @@
-# email_agent.py
-
 from __future__ import annotations
 
 import json
@@ -12,12 +10,211 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableSequence
 from langchain_openai import ChatOpenAI
 
-from scenarios import Scenario
-from rubric import GLOBAL_RUBRIC, RubricItem
+from .scenarios import Scenario
+from .rubric import GLOBAL_RUBRIC, RubricItem
 
 
 # ----------------- Data models -----------------
-# ... (intermediate code omitted for brevity) ...
+
+
+@dataclass(frozen=True)
+class EmailMessage:
+    sender: str
+    subject: str
+    body: str
+
+
+@dataclass(frozen=True)
+class RubricScoreResult:
+    name: str
+    score: int
+    max_score: int
+
+
+@dataclass(frozen=True)
+class GradingResult:
+    scenario_name: str
+    scores: List[RubricScoreResult]
+    total_score: int
+    max_total_score: int
+    overall_comment: str
+    revision_example: str
+    model_info: Dict[str, Any]
+    raw_json: Dict[str, Any]
+
+
+@dataclass(frozen=True)
+class EvaluationAndReply:
+    grading: GradingResult
+    counterpart_reply: str
+
+
+class TaskType(str, Enum):
+    COUNTERPART_PROMPT = "counterpart_prompt"
+    COUNTERPART_REPLY = "counterpart_reply"
+    GRADE_STUDENT_EMAIL = "grade_student_email"
+
+
+# ----------------- Helpers & prompts -----------------
+
+# (Keeping prompts as they were)
+BASE_SYSTEM_PROMPT = (
+    "You are part of an email etiquette training simulator for students in the "
+    "BYU-Pathway Worldwide program.\n"
+    "Most learners are from developing countries and are non-native English speakers.\n"
+    "They are preparing for remote work with employers in other countries.\n"
+    "Your job is to model and support clear, respectful, and professional email "
+    "communication in a global workplace.\n"
+    "Always:\n"
+    "- Use clear, simple English (CEFR B1–B2 level).\n"
+    "- Avoid slang, idioms, or cultural references that may be confusing.\n"
+    "- Show how to be respectful but also confident and responsible.\n"
+)
+
+
+def _thread_to_text(thread: Sequence[EmailMessage]) -> str:
+    if not thread:
+        return "(no prior emails yet)"
+    lines: list[str] = []
+    for idx, message in enumerate(thread, start=1):
+        header = f"Message {idx} — From: {message.sender} | Subject: {message.subject}".strip()
+        body = message.body.strip()
+        lines.append(f"{header}\n{body}\n")
+    return "\n".join(lines).strip()
+
+COUNTERPART_PROMPT_TEMPLATE = """
+{system_prompt}
+
+LEARNER & CONTEXT:
+- Program: BYU-Pathway Worldwide
+- Learner background: Most learners are from developing countries, improving their earning
+  ability through remote work, and are non-native English speakers.
+- English level: intermediate
+- Remote work context: The student may have unstable internet and power but is trying to be
+  professional and reliable.
+- Typical employer region: US-based employer in a different time zone
+
+SCENARIO:
+- Name: {scenario_name}
+- Environment: {environment}
+- You are role-playing as: {counterpart_role}
+
+What the student is expected to do in this assignment:
+{student_task}
+
+How you (the counterpart) should sound:
+{counterpart_style}
+
+Your job:
+- Write a realistic email from the counterpart to the student in a REMOTE WORK situation.
+- This email will usually be the first email in the thread.
+- Use clear, professional English that is easy for an intermediate learner to understand.
+- Avoid slang, idioms, or heavy cultural references.
+- 1–3 short paragraphs is enough.
+
+Operator instructions:
+{instructions}
+
+Draft the full counterpart email below as plain text.
+Do not explain your reasoning, only output the email body.
+"""
+
+
+COUNTERPART_REPLY_TEMPLATE = """
+{system_prompt}
+
+LEARNER & CONTEXT:
+- Program: BYU-Pathway Worldwide
+- Learner background: Most learners are from developing countries, improving their earning
+  ability through remote work, and are non-native English speakers.
+- English level: intermediate
+- Remote work context: The student may have unstable internet and power but is trying to be
+  professional and reliable.
+- Typical employer region: US-based employer in a different time zone
+
+SCENARIO:
+- Name: {scenario_name}
+- Environment: {environment}
+- You are role-playing as: {counterpart_role}
+
+What the student is expected to do in this assignment:
+{student_task}
+
+How you (the counterpart) should sound:
+{counterpart_style}
+
+Email thread so far (newest last):
+{email_thread}
+
+You have just received the student's email above.
+Write a realistic reply from the counterpart (manager, client, etc.) to the student.
+
+Guidelines:
+- Respond in a calm, professional tone.
+- Acknowledge what the student said.
+- Confirm any decisions, next steps, or expectations.
+- Use clear, simple English.
+- Keep it 1–3 short paragraphs.
+
+Operator instructions:
+{instructions}
+
+Draft the full counterpart reply below as plain text.
+Do not explain your reasoning, only output the email body.
+"""
+
+
+GRADING_JSON_TEMPLATE = """
+{system_prompt}
+
+You are grading a student's email for a remote-work email etiquette assignment.
+
+LEARNER & CONTEXT:
+- Program: BYU-Pathway Worldwide
+- Learner background: Most learners are from developing countries, improving their earning
+  ability through remote work, and are non-native English speakers.
+- English level: intermediate
+- Remote work context: The student may have unstable internet and power but is trying to be
+  professional and reliable.
+- Typical employer region: US-based employer in a different time zone
+
+SCENARIO:
+- Name: {scenario_name}
+- Environment: {environment}
+- Counterpart role: {counterpart_role}
+
+What the student was asked to do:
+{student_task}
+
+Grading focus for this scenario:
+{grading_focus}
+
+Here is the email thread the student is responding to (newest last):
+{email_thread}
+
+Here is the student's email to grade:
+{student_email}
+
+RUBRIC:
+{rubric_text}
+
+Return your feedback as a single JSON object with this structure:
+
+{{
+  "scores": [
+    {{"name": "<rubric item name>", "score": 1-5, "max_score": 5}},
+    ...
+  ],
+  "overall_comment": "<3-6 sentences of feedback in simple, kind English>",
+  "revision_example": "<a revised version of the student's email that is better but realistic>"
+}}
+
+Important:
+- Do NOT include any text before or after the JSON.
+- Do NOT wrap the JSON in backticks or say 'Here is the JSON'.
+- Only output valid JSON.
+"""
+
 
 # ----------------- EmailAgent -----------------
 
@@ -37,8 +234,6 @@ class EmailAgent:
         llm_kwargs: Dict[str, Any] = {"model": model, "temperature": temperature}
         if base_url is not None:
             llm_kwargs["base_url"] = base_url
-        
-        # If api_key is provided, pass it; otherwise it looks for env var OPENAI_API_KEY
         if api_key:
             llm_kwargs["api_key"] = api_key
 
@@ -51,7 +246,6 @@ class EmailAgent:
         self._counterpart_reply_chain = self._build_chain(
             COUNTERPART_REPLY_TEMPLATE
         )
-        # Grading uses a dedicated chain built inside grade_student_email
 
     def _build_chain(self, template: str) -> RunnableSequence:
         prompt = PromptTemplate(
@@ -68,7 +262,6 @@ class EmailAgent:
                 "instructions",
             ],
         )
-        # OpenAI chat models outputs a message, so we pipe to StrOutputParser to get string
         return prompt | self._llm | StrOutputParser()
 
     def _base_payload(self) -> Dict[str, str]:
@@ -204,7 +397,7 @@ class EmailAgent:
             max_total_score = sum(s.max_score for s in scores)
 
         model_info = {
-            "model_name": model_name or getattr(self._llm, "model", "unknown"),
+            "model_name": model_name or getattr(self._llm, "model_name", "unknown"),
             "temperature": temperature
             if temperature is not None
             else getattr(self._llm, "temperature", None),

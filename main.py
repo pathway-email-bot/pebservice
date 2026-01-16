@@ -139,14 +139,25 @@ def process_single_message(service, msg):
         prior_thread = agent.build_starter_thread() 
         
         # Process interaction
-        result = agent.process_interaction(student_email, prior_thread)
+        result = agent.evaluate_and_respond(
+            prior_thread=prior_thread,
+            student_email=student_email,
+            rubric=rubric.items
+        )
         
         # Send reply
-        if result.response:
+        if result.counterpart_reply:
             logger.info(f"Generated response for {sender}. Sending reply.")
-            send_reply(service, msg, result.response)
+            # Build a nice reply that includes the feedback
+            reply_body = (
+                f"{result.counterpart_reply}\n\n"
+                f"--- FEEDBACK ---\n"
+                f"{result.grading.overall_comment}\n\n"
+                f"Score: {result.grading.total_score}/{result.grading.max_total_score}"
+            )
+            send_reply(service, msg, reply_body)
         else:
-            logger.info(f"No response generated for {sender} (Score: {result.total_score if result.total_score else 'N/A'}).")
+            logger.info(f"No response generated for {sender}.")
             
     except Exception as e:
         logger.error(f"Error during AI processing: {e}")
@@ -180,7 +191,7 @@ def send_reply(service, original_msg, reply_text):
 
 def get_gmail_service():
     """Builds Gmail service using environment variables."""
-    # ... (Keep existing implementation)
+    # Build Gmail service using setup credentials in environment
     try:
         client_id = os.environ.get('GMAIL_CLIENT_ID')
         client_secret = os.environ.get('GMAIL_CLIENT_SECRET')

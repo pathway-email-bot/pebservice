@@ -3,7 +3,10 @@ import json
 import subprocess
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
+SCOPES = [
+    'https://www.googleapis.com/auth/gmail.modify',
+    'https://www.googleapis.com/auth/gmail.settings.basic'
+]
 
 def set_gh_secret(name, value):
     try:
@@ -35,16 +38,23 @@ def main():
     # 2. Auth Flow
     print("\nStarting OAuth Flow...")
     flow = InstalledAppFlow.from_client_secrets_file('client_secret.json', SCOPES)
-    creds = flow.run_local_server(port=0)
+    creds = flow.run_local_server(port=0, prompt='consent')
     
     print("\nAuthenticated!")
     
     # 3. Set Refresh Token
     if creds.refresh_token:
+        token = creds.refresh_token
+        print(f"\nGMAIL_REFRESH_TOKEN={token}")
+        with open('token_capture.txt', 'w') as f:
+            f.write(token)
+        print("✓ Saved refresh token to token_capture.txt")
         print("Setting Refresh Token in GitHub...")
-        set_gh_secret('GMAIL_REFRESH_TOKEN', creds.refresh_token)
+        set_gh_secret('GMAIL_REFRESH_TOKEN', token)
         print("\nAll secrets set successfully!")
     else:
+        # If no refresh token, just print the current one if available
+        print(f"\nExisting Refresh Token (might be none): {creds.refresh_token}")
         print("\nWARNING: No refresh token returned. You might need to revoke access and try again to prompt for content.")
 
 if __name__ == '__main__':

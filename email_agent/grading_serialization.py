@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Dict, Any
 
-from email_agent import GradingResult, RubricScoreResult
+from .email_agent import GradingResult, RubricScoreResult
 
 
 def grading_result_to_storage(gr: GradingResult) -> Dict[str, Any]:

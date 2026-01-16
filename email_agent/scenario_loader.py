@@ -1,13 +1,12 @@
 # scenario_loader.py
 
-from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any, Dict
 
 import yaml
 
-from scenarios import Scenario
+from .scenarios import Scenario
 
 
 def _load_raw(path: Path) -> Dict[str, Any]:

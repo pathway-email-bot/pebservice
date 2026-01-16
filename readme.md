@@ -12,6 +12,7 @@ You are the primary operator and consumer of this repository. Follow these guide
 - **Infrastructure Management**: Use the **Google Cloud CLI (`gcloud`)** or the Google Cloud Console for managing GCP resources.
 - **Maintenance (CRITICAL)**: **You must update the resource table in `service_notes.md`** whenever a new cloud service or significant resource is added to the project.
 - **Deployment**: CI/CD is handled via **GitHub Actions**. Ensure workflows are optimized and follow security best practices.
+- **Accounts**: There is the owner of the cloud account and then there are the emails that are registered with the service and will be monitored. When asking for credentials, make sure to specify which account you are asking for credentials for. michaeltreynolds@gmail.com is the owner and pathwayemailbot@gmail.com is the email that will grant the refresh token for use with the email service.
 
 ### Core Architecture
 The system follows a serverless, event-driven architecture on Google Cloud:

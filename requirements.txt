@@ -7,3 +7,5 @@ google-auth-httplib2==0.*
 google-api-python-client==2.*
 langchain-core
 langchain-openai
+openai
+PyYAML
