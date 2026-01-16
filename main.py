@@ -191,7 +191,7 @@ def send_reply(service, original_msg, reply_text):
 
 def get_gmail_service():
     """Builds Gmail service using environment variables."""
-    # Build Gmail service using setup credentials in environment
+    # ... (Keep existing implementation)
     try:
         client_id = os.environ.get('GMAIL_CLIENT_ID')
         client_secret = os.environ.get('GMAIL_CLIENT_SECRET')

@@ -15,9 +15,7 @@ def setup_watch():
 
     service = build('gmail', 'v1', credentials=creds)
 
-    # Note: Ensure this matches the project created in setup_infra.ps1
-    # or pass it as an environment variable/argument.
-    project_id = os.environ.get("GCP_PROJECT_ID", "pathway-email-bot-6543")
+    project_id = "pathway-email-bot-6543"
     topic_name = f"projects/{project_id}/topics/email-notifications"
 
     request = {

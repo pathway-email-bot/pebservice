@@ -82,6 +82,7 @@ def _thread_to_text(thread: Sequence[EmailMessage]) -> str:
         lines.append(f"{header}\n{body}\n")
     return "\n".join(lines).strip()
 
+# ... (Templates unchanged) ...
 COUNTERPART_PROMPT_TEMPLATE = """
 {system_prompt}
 
