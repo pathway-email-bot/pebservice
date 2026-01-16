@@ -425,6 +425,8 @@ class EmailAgent:
         rubric: Sequence[RubricItem] = GLOBAL_RUBRIC,
     ) -> EvaluationAndReply:
         """Given prior thread + student's email, return grading + counterpart reply."""
+        # Note: We assume logging is configured by the caller (main.py)
+        
         grading = self.grade_student_email(
             thread=prior_thread,
             student_email=student_email.body,

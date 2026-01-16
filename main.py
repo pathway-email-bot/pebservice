@@ -33,7 +33,7 @@ def process_email(cloud_event):
     
     if "data" in pubsub_message:
         message_data = base64.b64decode(pubsub_message["data"]).decode("utf-8")
-        logger.info(f"Received message: {message_data}")
+        logger.info(f"Received Pub/Sub message data: {message_data}")
         
         try:
             notification = json.loads(message_data)
@@ -54,25 +54,35 @@ def process_email(cloud_event):
 
             # 3. List history to find the message ID
             try:
+                # We need to get history since the provided historyId, or simply check recent messages if history is too old (404)
+                # For simplicity, we assume robust history id for now, but log catch blocks
+                logger.info(f"Fetching history startHistoryId={history_id}")
                 history = service.users().history().list(userId='me', startHistoryId=history_id).execute()
                 changes = history.get('history', [])
                 
                 if not changes:
-                    logger.info("No history changes found.")
+                    logger.info("No history changes found in response.")
                     return "OK"
 
+                logger.info(f"Found {len(changes)} history change records.")
+
+                found_message = False
                 for change in changes:
                     messages_added = change.get('messagesAdded', [])
                     for record in messages_added:
                         message_id = record.get('message', {}).get('id')
                         if message_id:
-                             logger.info(f"Processing message ID: {message_id}")
+                             logger.info(f"Found added message ID: {message_id}")
                              # 4. Get full message details
                              msg = service.users().messages().get(userId='me', id=message_id, format='full').execute()
                              process_single_message(service, msg)
+                             found_message = True
+                
+                if not found_message:
+                    logger.info("No 'messagesAdded' events found in history changes.")
 
             except Exception as e:
-                logger.error(f"Error fetching history or messages: {e}")
+                logger.error(f"Error fetching history or messages: {e}", exc_info=True)
             
         except json.JSONDecodeError:
             logger.error("Error decoding JSON from Pub/Sub message.")
@@ -83,33 +93,37 @@ def process_email(cloud_event):
 
 def process_single_message(service, msg):
     """Parses email content and decides on action."""
-    headers = msg.get('payload', {}).get('headers', [])
-    subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "No Subject")
-    sender = next((h['value'] for h in headers if h['name'] == 'From'), "Unknown")
-    
-    # Extract Body (Text/Plain)
-    body = "No Body"
-    parts = msg.get('payload', {}).get('parts', [])
-    if not parts:
-        # Sometimes payload body has data directly if no parts
-        data = msg.get('payload', {}).get('body', {}).get('data')
-        if data:
-            body = base64.urlsafe_b64decode(data).decode('utf-8')
-    else:
-        for part in parts:
-            if part['mimeType'] == 'text/plain':
-                data = part['body'].get('data')
-                if data:
-                    body = base64.urlsafe_b64decode(data).decode('utf-8')
-                    break
-    
-    logger.info(f"Email from: {sender} | Subject: {subject}")
-    
-    # Always engage AI Agent (Trigger check removed)
-    logger.info("Engaging AI Agent for all emails.")
-     
     try:
+        headers = msg.get('payload', {}).get('headers', [])
+        subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "No Subject")
+        sender = next((h['value'] for h in headers if h['name'] == 'From'), "Unknown")
+        
+        # Extract Body (Text/Plain)
+        body = "No Body"
+        parts = msg.get('payload', {}).get('parts', [])
+        if not parts:
+            # Sometimes payload body has data directly if no parts
+            data = msg.get('payload', {}).get('body', {}).get('data')
+            if data:
+                body = base64.urlsafe_b64decode(data).decode('utf-8')
+        else:
+            for part in parts:
+                if part['mimeType'] == 'text/plain':
+                    data = part['body'].get('data')
+                    if data:
+                        body = base64.urlsafe_b64decode(data).decode('utf-8')
+                        break
+        
+        logger.info(f"Processing Email - From: {sender} | Subject: {subject}")
+        # logger.info(f"Body snippet: {body[:100]}...") # Optional: log body snippet
+        
+        # Guard: Don't reply to self or bots to avoid loops
+        if "google" in sender.lower() or "bot" in sender.lower() or "noreply" in sender.lower():
+             logger.info(f"Skipping auto-reply for likely bot/self: {sender}")
+             return
+
         # Initialize Agent
+        logger.info("Loading Scenario and Rubric...")
         scenario = load_scenario(DEFAULT_SCENARIO_PATH)
         rubric = load_rubric(DEFAULT_RUBRIC_PATH)
         
@@ -118,6 +132,7 @@ def process_single_message(service, msg):
             logger.error("Missing OPENAI_API_KEY")
             return
 
+        logger.info("Initializing EmailAgent...")
         agent = EmailAgent(
             model="gpt-4o",
             temperature=0.2,
@@ -132,21 +147,21 @@ def process_single_message(service, msg):
             body=body
         )
         
-        # Build Prior Thread (Mocking context if needed, or fetching previous emails)
-        # For this simple version, we assume the student is starting or we just treat it as a single turn.
-        # Ideally, we should fetch the threadId key from Gmail to rebuild context.
+        # Process interaction
+        logger.info("Calling agent.evaluate_and_respond (OpenAI)...")
         prior_thread = agent.build_starter_thread() 
         
-        # Process interaction
         result = agent.evaluate_and_respond(
             prior_thread=prior_thread,
             student_email=student_email,
             rubric=rubric.items
         )
         
+        logger.info(f"Agent finished. Reply generated: {bool(result.counterpart_reply)}")
+
         # Send reply
         if result.counterpart_reply:
-            logger.info(f"Generated response for {sender}. Sending reply.")
+            logger.info(f"Preparing to send reply to {sender}...")
             # Build a nice reply that includes the feedback
             reply_body = (
                 f"{result.counterpart_reply}\n\n"
@@ -156,10 +171,10 @@ def process_single_message(service, msg):
             )
             send_reply(service, msg, reply_body)
         else:
-            logger.info(f"No response generated for {sender}.")
+            logger.warning(f"Agent returned empty response for {sender}.")
             
     except Exception as e:
-        logger.error(f"Error during AI processing: {e}")
+        logger.error(f"Error inside process_single_message: {e}", exc_info=True)
 
 def send_reply(service, original_msg, reply_text):
     """Sends a reply via Gmail API."""
@@ -168,9 +183,13 @@ def send_reply(service, original_msg, reply_text):
         headers = original_msg['payload']['headers']
         subject = next(h['value'] for h in headers if h['name'] == 'Subject')
         
+        sender_email = next((h['value'] for h in headers if h['name'] == 'From'), "")
+        
+        logger.info(f"Constructing reply message for thread: {thread_id}")
+
         # Prepare Message
         # Note: Proper MIME construction is better, but simple dictionary works for text
-        message_content = f"To: {next(h['value'] for h in headers if h['name'] == 'From')}\r\n" \
+        message_content = f"To: {sender_email}\r\n" \
                           f"Subject: Re: {subject}\r\n" \
                           f"In-Reply-To: {original_msg['id']}\r\n" \
                           f"References: {original_msg['id']}\r\n" \
@@ -181,11 +200,11 @@ def send_reply(service, original_msg, reply_text):
         
         body = {'raw': raw_message, 'threadId': thread_id}
         
-        service.users().messages().send(userId='me', body=body).execute()
-        logger.info("Reply sent successfully.")
+        sent_msg = service.users().messages().send(userId='me', body=body).execute()
+        logger.info(f"Reply SENT successfully. ID: {sent_msg.get('id')}")
         
     except Exception as e:
-        logger.error(f"Error sending reply: {e}")
+        logger.error(f"Error sending reply: {e}", exc_info=True)
 
 def get_gmail_service():
     """Builds Gmail service using OAuth credentials from environment variables."""
@@ -208,5 +227,5 @@ def get_gmail_service():
         
         return build('gmail', 'v1', credentials=creds)
     except Exception as e:
-        logger.error(f"Auth error: {e}")
+        logger.error(f"Auth error: {e}", exc_info=True)
         return None
