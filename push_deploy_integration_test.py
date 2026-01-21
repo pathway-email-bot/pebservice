@@ -2,13 +2,17 @@
 """
 Full integration test: push -> deploy -> send test email -> verify logs.
 
-Usage: python push_deploy_integration_test.py [--skip-push] [--skip-email]
+Usage: python push_deploy_integration_test.py [--skip-push] [--skip-email] [--skip-tokens]
 
 This script:
+0. Checks that required tokens are valid (gcloud, Gmail)
 1. Pushes current changes to GitHub (triggers CI/CD)
 2. Waits for Cloud Function deployment to complete
 3. Sends a test email to the bot
 4. Waits for processing and checks logs for success markers
+
+Prerequisites:
+    - Run 'python ensure_tokens.py' first to set up authentication
 """
 
 import subprocess
@@ -184,18 +188,45 @@ def check_logs() -> bool:
         return False
 
 
+def check_tokens() -> bool:
+    """Run ensure_tokens.py to verify authentication."""
+    step_header("Step 0: Checking authentication tokens")
+    
+    code, output = run_cmd("python ensure_tokens.py", check=False)
+    
+    # Check if tokens are valid based on exit code
+    if code == 0:
+        print("[OK] All required tokens are valid")
+        return True
+    else:
+        print("[WARN] Token check returned warnings")
+        print("Run 'python ensure_tokens.py' manually to fix")
+        return False
+
+
 def main():
     skip_push = "--skip-push" in sys.argv
     skip_email = "--skip-email" in sys.argv
+    skip_tokens = "--skip-tokens" in sys.argv
     
     print("=" * 60)
     print("  PEB Service - Full Integration Test")
     print("=" * 60)
     print(f"  Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"  Skip tokens: {skip_tokens}")
     print(f"  Skip push: {skip_push}")
     print(f"  Skip email: {skip_email}")
     
     results = {}
+    
+    # Step 0: Check tokens
+    if not skip_tokens:
+        results["tokens"] = check_tokens()
+        if not results["tokens"]:
+            response = input("\nContinue anyway? (y/n): ").strip().lower()
+            if response != "y":
+                print("[ABORT] Fix tokens first with: python ensure_tokens.py")
+                return 1
     
     # Step 1: Push
     if not skip_push:
