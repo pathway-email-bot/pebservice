@@ -22,3 +22,8 @@ Maybe should have some script to check if the service is running, describe it, a
 Need a test email and have it run as part of CI/CD
 
 Need to make a list of rules for agents to follow in general (good practices like testing, developer inner loop improvements, creating scripts instead of directly calling external systems, keeping an ongoing log of actions in the repo)
+
+
+---------- EMAIL AGENT ---------------
+The response new too much context. It did not scope it's understanding to the users email. This is not good. I sent a test email and it said "Thanks for telling me about the power outage"...
+
