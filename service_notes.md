@@ -13,6 +13,7 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 | **Cloud Function** | `process_email` | Core AI logic and email handler |
 | **Service Account** | `687061619628-compute@developer.gserviceaccount.com` | Default Compute SA used by function |
 | **AI Model** | `gpt-4o` (OpenAI) | LLM for grading and responses |
+| **Secret Manager** | `gmail-client-id`, `gmail-client-secret` | OAuth credentials (source of truth) |
 
 ### Required APIs
 - `gmail.googleapis.com` - Read/send emails
@@ -20,19 +21,36 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 - `pubsub.googleapis.com` - Pub/Sub messaging
 - `run.googleapis.com` - Cloud Run (Gen 2 functions)
 - `cloudbuild.googleapis.com` - Build and deploy
+- `secretmanager.googleapis.com` - Secret Manager
 
 ### Gmail Watch Configuration
 The Gmail API uses push notifications via `users.watch()`. This must be renewed every 7 days. Use `setup_watch.py` to configure or renew the watch on `pathwayemailbot@gmail.com`.
 
-## GitHub Configuration
-### Secrets
-Manage these via `gh secret set`:
-- `GCP_PROJECT_ID`: ID of the Google Cloud Project (e.g., `pathway-email-bot-6543`).
-- `GCP_SA_KEY`: JSON service account key for deployment.
-- `OPENAI_API_KEY`: API key for the AI model/agent.
-- `GMAIL_CLIENT_ID`: OAuth Client ID for Gmail integration.
-- `GMAIL_CLIENT_SECRET`: OAuth Client Secret for Gmail integration.
-- `GMAIL_REFRESH_TOKEN`: Long-lived refresh token for the Gmail account.
+## Secret Management Strategy
+
+**GCP Secret Manager is the source of truth** for all secrets. GitHub Secrets are a shadow copy used only for CI/CD.
+
+### Secrets in GCP Secret Manager
+| Secret Name | Description |
+|:---|:---|
+| `gmail-client-id` | OAuth Client ID |
+| `gmail-client-secret` | OAuth Client Secret |
+
+### Syncing Secrets
+
+```powershell
+# Sync from GCP to local dev
+python sync_secrets.py
+
+# Sync from GCP to both local and GitHub
+python sync_secrets.py --github
+
+# List all secrets in GCP
+python sync_secrets.py --list
+```
+
+### GitHub Secrets (Shadow Copy)
+These are synced FROM GCP Secret Manager using `sync_secrets.py --github`:
 ### Setup Flow & Token Generation
 To set up or refresh your credentials:
 1. **GCP Setup**: 

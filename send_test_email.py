@@ -16,17 +16,9 @@ def send_test_email():
         print("ERROR: Could not get 'personal' credentials.")
         return
 
-    # 2. Get Recipient Address (Bot)
-    # We authenticate as bot just to get its profile email, so we don't hardcode it (optional, but nice)
-    print("\n--- Identifying RECIPIENT (Bot) ---")
-    bot_service = get_gmail_service(role='bot')
-    if not bot_service:
-        print("ERROR: Could not get 'bot' credentials to identify address.")
-        return
-    
-    bot_profile = bot_service.users().getProfile(userId='me').execute()
-    bot_email = bot_profile['emailAddress']
-    print(f"Target Bot Email: {bot_email}")
+    # 2. Get Recipient Address (Bot) - hardcoded to avoid needing bot token
+    bot_email = "pathwayemailbot@gmail.com"
+    print(f"\nTarget Bot Email: {bot_email}")
 
     # 3. Construct and Send Email
     sender_profile = sender_service.users().getProfile(userId='me').execute()

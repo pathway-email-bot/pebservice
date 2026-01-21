@@ -27,6 +27,10 @@ REGION = "us-central1"
 LOG_WAIT_SECONDS = 60
 DEPLOY_TIMEOUT_SECONDS = 300
 
+# Use the same Python that's running this script (typically venv)
+import os
+VENV_PYTHON = sys.executable
+
 # Success markers to look for in logs
 SUCCESS_MARKERS = [
     "PEB Service module loaded",  # Canary log - proves logging works
@@ -127,7 +131,8 @@ def send_test_email() -> bool:
     """Send a test email using send_test_email.py."""
     step_header("Step 3: Sending test email")
     
-    code, output = run_cmd("python send_test_email.py", check=False)
+    # Use the same Python interpreter (venv) to run the email script
+    code, output = run_cmd(f'"{VENV_PYTHON}" send_test_email.py', check=False)
     print(output)
     
     if "SUCCESS" in output:
@@ -145,10 +150,10 @@ def check_logs() -> bool:
     print(f"[INFO] Waiting {LOG_WAIT_SECONDS}s for email processing...")
     time.sleep(LOG_WAIT_SECONDS)
     
-    # Fetch recent logs
+    # Fetch recent logs (use table format for better parsing)
     code, output = run_cmd(
         f'gcloud functions logs read {FUNCTION_NAME} --region {REGION} '
-        f'--limit 50 --format "value(textPayload)"',
+        f'--limit 50',
         check=False
     )
     
