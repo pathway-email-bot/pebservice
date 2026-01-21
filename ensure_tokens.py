@@ -5,24 +5,27 @@ Token management for PEB Service integration testing.
 This script ensures all required tokens are present and valid:
 1. gcloud CLI auth (owner account) - for Cloud Function logs
 2. Gmail OAuth 'personal' role - for sending test emails  
-3. Gmail OAuth 'bot' role (optional) - for verifying bot account
+
+Non-interactive: automatically launches browser for auth if needed,
+waits up to 60 seconds for completion, then fails gracefully.
 
 Usage:
-    python ensure_tokens.py           # Check all tokens
-    python ensure_tokens.py --refresh # Force refresh all tokens
+    python ensure_tokens.py           # Check/refresh all tokens
+    python ensure_tokens.py --check   # Check only, don't refresh
 """
 
 import os
 import sys
 import json
 import subprocess
-from datetime import datetime, timedelta
-from pathlib import Path
+import threading
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 # Configuration
 TOKEN_STORE_FILE = "token_store.secret.json"
 CLIENT_CONFIG_FILE = "client_config.secret.json"
-GCLOUD_TOKEN_LIFETIME_HOURS = 1  # Access tokens last ~1 hour
+AUTH_TIMEOUT_SECONDS = 60  # How long to wait for browser auth
 GMAIL_REFRESH_TOKEN_CHECK_DAYS = 30  # Warn if older than this
 
 # Account mapping - which email to use for each token type
@@ -69,8 +72,8 @@ def print_header(msg: str):
     print(f"{'='*60}")
 
 
-def print_account_warning(token_type: str):
-    """Warn user which account to sign in with."""
+def print_account_info(token_type: str):
+    """Print which account should be used (no input required)."""
     info = ACCOUNT_MAP.get(token_type, {})
     email = info.get("email", "unknown")
     desc = info.get("description", "")
@@ -78,8 +81,8 @@ def print_account_warning(token_type: str):
     print(f"\n{'!'*60}")
     print(f"  SIGN IN WITH: {email}")
     print(f"  Purpose: {desc}")
+    print(f"  (Browser will open automatically)")
     print(f"{'!'*60}")
-    input("Press Enter when ready to open browser...")
 
 
 def check_gcloud_auth() -> dict:
@@ -87,7 +90,6 @@ def check_gcloud_auth() -> dict:
     result = {
         "valid": False,
         "account": None,
-        "expires": None,
         "message": "",
     }
     
@@ -95,7 +97,7 @@ def check_gcloud_auth() -> dict:
         # Check active account (use shell=True for Windows PATH resolution)
         proc = subprocess.run(
             'gcloud auth list --filter="status:ACTIVE" --format="value(account)"',
-            capture_output=True, text=True, shell=True
+            capture_output=True, text=True, shell=True, timeout=15
         )
         account = proc.stdout.strip()
         
@@ -114,7 +116,7 @@ def check_gcloud_auth() -> dict:
         # Test access by describing a function
         proc = subprocess.run(
             'gcloud functions describe process_email --region=us-central1 --format="value(state)"',
-            capture_output=True, text=True, shell=True
+            capture_output=True, text=True, shell=True, timeout=30
         )
         
         if proc.returncode == 0:
@@ -123,6 +125,8 @@ def check_gcloud_auth() -> dict:
         else:
             result["message"] = f"Auth may be expired: {proc.stderr.strip()[:100]}"
             
+    except subprocess.TimeoutExpired:
+        result["message"] = "gcloud command timed out"
     except FileNotFoundError:
         result["message"] = "gcloud CLI not installed"
     except Exception as e:
@@ -131,10 +135,24 @@ def check_gcloud_auth() -> dict:
     return result
 
 
-def refresh_gcloud_auth():
-    """Refresh gcloud authentication."""
-    print_account_warning("gcloud")
-    subprocess.run("gcloud auth login", shell=True, check=False)
+def refresh_gcloud_auth() -> bool:
+    """Refresh gcloud authentication (auto-launches browser)."""
+    print_account_info("gcloud")
+    print(f"[INFO] Launching browser for gcloud auth (timeout: {AUTH_TIMEOUT_SECONDS}s)...")
+    
+    try:
+        proc = subprocess.run(
+            "gcloud auth login --no-launch-browser=false",
+            shell=True, 
+            timeout=AUTH_TIMEOUT_SECONDS
+        )
+        return proc.returncode == 0
+    except subprocess.TimeoutExpired:
+        print(f"[ERROR] Auth timed out after {AUTH_TIMEOUT_SECONDS}s")
+        return False
+    except Exception as e:
+        print(f"[ERROR] Auth failed: {e}")
+        return False
 
 
 def check_gmail_token(role: str) -> dict:
@@ -188,12 +206,12 @@ def check_gmail_token(role: str) -> dict:
     return result
 
 
-def refresh_gmail_token(role: str):
-    """Refresh Gmail OAuth token for a role."""
+def refresh_gmail_token(role: str) -> bool:
+    """Refresh Gmail OAuth token (auto-launches browser with timeout)."""
     token_type = f"gmail_{role}"
-    print_account_warning(token_type)
+    print_account_info(token_type)
+    print(f"[INFO] Launching browser for Gmail auth (timeout: {AUTH_TIMEOUT_SECONDS}s)...")
     
-    # Import here to avoid dependency issues if not installed
     try:
         from google_auth_oauthlib.flow import InstalledAppFlow
         
@@ -203,7 +221,18 @@ def refresh_gmail_token(role: str):
         ]
         
         flow = InstalledAppFlow.from_client_secrets_file(CLIENT_CONFIG_FILE, SCOPES)
-        creds = flow.run_local_server(port=0, prompt='consent')
+        
+        # Run with timeout using ThreadPoolExecutor
+        def run_auth():
+            return flow.run_local_server(port=0, prompt='consent', timeout_seconds=AUTH_TIMEOUT_SECONDS)
+        
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(run_auth)
+            try:
+                creds = future.result(timeout=AUTH_TIMEOUT_SECONDS)
+            except FuturesTimeoutError:
+                print(f"[ERROR] Auth timed out after {AUTH_TIMEOUT_SECONDS}s")
+                return False
         
         if creds and creds.refresh_token:
             token_file = f"token.{role}.secret.json"
@@ -214,24 +243,27 @@ def refresh_gmail_token(role: str):
             with open(token_file, 'w') as f:
                 json.dump(data, f, indent=2)
             print(f"[OK] Saved token to {token_file}")
+            return True
         else:
             print("[WARN] No refresh token returned")
+            return False
             
     except ImportError:
         print("[ERROR] google_auth_oauthlib not installed. Run: pip install google-auth-oauthlib")
+        return False
     except Exception as e:
         print(f"[ERROR] OAuth flow failed: {e}")
+        return False
 
 
 def main():
-    force_refresh = "--refresh" in sys.argv
+    check_only = "--check" in sys.argv
     
     print_header("PEB Service - Token Status Check")
     print(f"  Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"  Force refresh: {force_refresh}")
+    print(f"  Mode: {'Check only' if check_only else 'Auto-refresh if needed'}")
     
     store = load_token_store()
-    all_valid = True
     
     # 1. Check gcloud auth
     print_header("1. gcloud CLI (for Cloud Function logs)")
@@ -240,11 +272,9 @@ def main():
     status_icon = "[OK]" if gcloud_status["valid"] else "[!]"
     print(f"{status_icon} {gcloud_status['message']}")
     
-    if not gcloud_status["valid"] or force_refresh:
-        all_valid = False
-        response = input("\nRefresh gcloud auth? (y/n): ").strip().lower()
-        if response == "y":
-            refresh_gcloud_auth()
+    if not gcloud_status["valid"] and not check_only:
+        print("\n[AUTO] Attempting to refresh gcloud auth...")
+        if refresh_gcloud_auth():
             gcloud_status = check_gcloud_auth()
             print(f"After refresh: {gcloud_status['message']}")
     
@@ -257,18 +287,16 @@ def main():
     status_icon = "[OK]" if personal_status["valid"] else "[!]"
     print(f"{status_icon} {personal_status['message']}")
     
-    if not personal_status["valid"] or force_refresh:
-        all_valid = False
-        response = input("\nRefresh 'personal' Gmail token? (y/n): ").strip().lower()
-        if response == "y":
-            refresh_gmail_token("personal")
+    if not personal_status["valid"] and not check_only:
+        print("\n[AUTO] Attempting to refresh Gmail 'personal' token...")
+        if refresh_gmail_token("personal"):
             personal_status = check_gmail_token("personal")
             print(f"After refresh: {personal_status['message']}")
     
     store["tokens"]["gmail_personal"] = personal_status
     
-    # 3. Check Gmail bot token (optional)
-    print_header("3. Gmail 'bot' (optional, for bot account verification)")
+    # 3. Check Gmail bot token (optional - just report status)
+    print_header("3. Gmail 'bot' (optional)")
     bot_status = check_gmail_token("bot")
     
     status_icon = "[OK]" if bot_status["valid"] else "[?]"
@@ -282,17 +310,16 @@ def main():
     
     # Summary
     print_header("Summary")
-    print(f"  gcloud:        {'[OK]' if gcloud_status['valid'] else '[MISSING]'}")
+    print(f"  gcloud:         {'[OK]' if gcloud_status['valid'] else '[MISSING]'}")
     print(f"  gmail_personal: {'[OK]' if personal_status['valid'] else '[MISSING]'}")
     print(f"  gmail_bot:      {'[OK]' if bot_status['valid'] else '[OPTIONAL]'}")
     print(f"\n  Token store saved to: {TOKEN_STORE_FILE}")
     
     if gcloud_status["valid"] and personal_status["valid"]:
         print("\n[SUCCESS] All required tokens are valid!")
-        print("You can now run: python push_deploy_integration_test.py")
         return 0
     else:
-        print("\n[WARN] Some tokens are missing or invalid")
+        print("\n[FAIL] Some required tokens are missing or invalid")
         return 1
 
 
