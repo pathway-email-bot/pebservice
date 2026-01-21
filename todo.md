@@ -1,20 +1,24 @@
-# TODO: Post-Debugging Cleanup
+better logging use a decorator that logs functions as a whole and trace logging additionally with trace logging that works with the state set by the decorator to know what file/method it is being run from.
 
-## Code Cleanup
-- [ ] Review and remove debug `print()` statements added during silent failure debugging
-- [ ] Evaluate if dynamic path resolution logic in `main.py` is still necessary (may be overkill now that `.gitignore` is fixed)
-- [ ] Clean up `.gcloudignore` - remove commented-out override rules
+test plan for changes 
 
-## Compare with Original tkerby Code
-- [ ] Review original [tkerby/email-agent](https://github.com/tkerby/email-agent) implementation
-- [ ] Identify any unnecessary deviations made during debugging
-- [ ] Consider reverting or simplifying code where we over-engineered
+scripts directory becomes a skills directory with documentation.
 
-## Root Cause Notes
-The main issues were caused by:
-1. `.gitignore` ignoring `*.json` which prevented scenario files from being committed
-2. Overly aggressive debugging led to workarounds that may no longer be needed
+General rules:
+- always create a script to check things in external systems or when a review is requested to access other things with credentials so they can be approved once for future use.
 
-## Nice to Have
-- [ ] Add proper logging configuration instead of `print()` statements
-- [ ] Consider adding a local testing mode that mimics Cloud environment
+
+Agents are frequently crashing need a persistent repo-centric way to store the conversation. Not in some hidden files outside of git.
+
+Need some setup steps for a repo or working with a repo
+- python venv (or equivalent for the repo)
+- python requirements.txt
+- gcloud
+- gh
+- or any tools that are needed to work with this project...
+
+Maybe should have some script to check if the service is running, describe it, and see if we are ready to work on it.
+
+Need a test email and have it run as part of CI/CD
+
+Need to make a list of rules for agents to follow in general (good practices like testing, developer inner loop improvements, creating scripts instead of directly calling external systems, keeping an ongoing log of actions in the repo)
