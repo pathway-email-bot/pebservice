@@ -13,37 +13,17 @@ from email_agent.rubric_loader import load_rubric
 from email_agent.email_agent import EmailAgent, EmailMessage
 
 # Setup Logging
-# Setup Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-# Constants
-# Dynamic path resolution to handle local vs cloud structure discrepancies
-current_dir = Path(__file__).resolve().parent
-print(f"DEBUG: current_dir={current_dir}", flush=True)
 
-# Attempt to find the 'scenarios' directory
-BASE_DIR = None
-candidates = [
-    current_dir / "email_agent",  # Local structure
-    current_dir,                  # Flattened cloud structure?
-]
-
-for candidate in candidates:
-    if (candidate / "scenarios").exists():
-        BASE_DIR = candidate
-        print(f"DEBUG: Found scenarios in {BASE_DIR}", flush=True)
-        break
-
-if not BASE_DIR:
-    print("WARNING: Could not find 'scenarios' directory. Defaulting to email_agent.", flush=True)
-    BASE_DIR = current_dir / "email_agent"
-
-print(f"DEBUG: Final BASE_DIR={BASE_DIR}", flush=True)
-
+# Constants - Path resolution
+# Note: email_agent/ directory structure is preserved in Cloud Functions deployment
+BASE_DIR = Path(__file__).resolve().parent / "email_agent"
 DEFAULT_SCENARIO_PATH = BASE_DIR / "scenarios/missed_remote_standup.json"
 DEFAULT_RUBRIC_PATH = BASE_DIR / "rubrics/default.json"
 
-print("GLOBAL: Imports and constants ready.", flush=True)
+# Canary log to verify logging is working in Cloud Functions
+logger.info("PEB Service module loaded. Logging is operational.")
 
 @functions_framework.cloud_event
 def process_email(cloud_event):
@@ -51,7 +31,7 @@ def process_email(cloud_event):
     Triggered from a message on a Cloud Pub/Sub topic.
     The message usually comes from Gmail push notifications.
     """
-    print("ENTRY: process_email called.", flush=True)
+    logger.info("process_email triggered by Pub/Sub event")
     
     # 1. Decode the Pub/Sub message
     data = cloud_event.data
@@ -59,7 +39,7 @@ def process_email(cloud_event):
     
     if "data" in pubsub_message:
         message_data = base64.b64decode(pubsub_message["data"]).decode("utf-8")
-        print(f"DEBUG: Received message data: {message_data}", flush=True)
+        logger.debug(f"Received message data: {message_data}")
         
         try:
             notification = json.loads(message_data)
@@ -67,43 +47,43 @@ def process_email(cloud_event):
             history_id = notification.get("historyId")
             
             if not history_id:
-                print("WARNING: No historyId found.", flush=True)
+                logger.warning("No historyId found in notification")
                 return "OK"
                 
-            print(f"DEBUG: Notification for {email_address}, historyId: {history_id}", flush=True)
+            logger.info(f"Processing notification for {email_address}, historyId: {history_id}")
             
             # 2. Initialize Gmail Service
             service = get_gmail_service()
             if not service:
-                print("ERROR: Failed to initialize Gmail service.", flush=True)
+                logger.error("Failed to initialize Gmail service")
                 return "OK"
 
             # 3. List history to find the message ID
             try:
-                print(f"DEBUG: Fetching history startHistoryId={history_id}", flush=True)
+                logger.debug(f"Fetching history starting from historyId={history_id}")
                 history = service.users().history().list(userId='me', startHistoryId=history_id).execute()
                 changes = history.get('history', [])
                 
                 if not changes:
-                    print("DEBUG: No history changes found. Attempting fallback to latest message.", flush=True)
+                    logger.debug("No history changes found. Attempting fallback to latest message.")
                     # Fallback: Get the most recent message
                     try:
                         response = service.users().messages().list(userId='me', maxResults=1).execute()
                         messages = response.get('messages', [])
                         if messages:
                             latest_msg_id = messages[0]['id']
-                            print(f"DEBUG: Fallback found message ID: {latest_msg_id}", flush=True)
+                            logger.debug(f"Fallback found message ID: {latest_msg_id}")
                             msg = service.users().messages().get(userId='me', id=latest_msg_id, format='full').execute()
                             process_single_message(service, msg)
                             return "OK"
                         else:
-                            print("DEBUG: Fallback found no messages either.", flush=True)
+                            logger.debug("Fallback found no messages either")
                             return "OK"
                     except Exception as fb_e:
-                        print(f"ERROR: Fallback failed: {fb_e}", flush=True)
+                        logger.error(f"Fallback failed: {fb_e}", exc_info=True)
                         return "OK"
 
-                print(f"DEBUG: Found {len(changes)} changes.", flush=True)
+                logger.debug(f"Found {len(changes)} history changes")
 
                 found_message = False
                 for change in changes:
@@ -111,22 +91,22 @@ def process_email(cloud_event):
                     for record in messages_added:
                         message_id = record.get('message', {}).get('id')
                         if message_id:
-                             print(f"DEBUG: Found added message ID: {message_id}", flush=True)
+                             logger.debug(f"Processing added message ID: {message_id}")
                              # 4. Get full message details
                              msg = service.users().messages().get(userId='me', id=message_id, format='full').execute()
                              process_single_message(service, msg)
                              found_message = True
                 
                 if not found_message:
-                    print("DEBUG: No 'messagesAdded' events found.", flush=True)
+                    logger.debug("No 'messagesAdded' events found in history")
 
             except Exception as e:
-                print(f"ERROR: Error fetching history: {e}", flush=True)
+                logger.error(f"Error fetching history: {e}", exc_info=True)
             
         except json.JSONDecodeError:
-            print("ERROR: JSON decode error.", flush=True)
+            logger.error("Failed to decode JSON from Pub/Sub message")
     else:
-        print("WARNING: No data in Pub/Sub message.", flush=True)
+        logger.warning("No data in Pub/Sub message")
 
     return "OK"
 

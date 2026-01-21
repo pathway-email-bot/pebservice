@@ -13,3 +13,6 @@ temp_restore/
 # Secrets
 *.secret
 *.secret.json
+
+# Note: Do NOT add *.json here - scenario/rubric JSON files must be committed.
+# Only secret-containing files (*.secret.json) are ignored above.
