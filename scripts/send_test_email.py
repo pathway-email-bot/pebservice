@@ -1,6 +1,12 @@
 import base64
 import time
+import sys
+from pathlib import Path
 from email.message import EmailMessage
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+
 from auth_utils import get_gmail_service
 
 def send_test_email():

@@ -10,6 +10,11 @@ Usage:
 """
 import os
 import sys
+from pathlib import Path
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+
 from email_agent.email_agent import EmailAgent, EmailMessage
 from email_agent.scenario_models import Scenario
 from email_agent.rubric import GLOBAL_RUBRIC

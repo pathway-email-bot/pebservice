@@ -3,7 +3,11 @@ from unittest.mock import MagicMock, patch
 import json
 import base64
 import os
+import sys
 from dataclasses import dataclass
+
+# Add src to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 # 1. verify we can import the renamed module
 from email_agent.scenario_models import Scenario
