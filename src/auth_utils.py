@@ -1,11 +1,13 @@
 import os
 import json
+from pathlib import Path
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 # File Constants
-CLIENT_CONFIG_FILE = 'client_config.secret.json'
+CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+CLIENT_CONFIG_FILE = str(CONFIG_DIR / 'client_config.secret.json')
 
 SCOPES = [
     'https://www.googleapis.com/auth/gmail.modify',
@@ -14,7 +16,8 @@ SCOPES = [
 
 def get_token_filename(role: str) -> str:
     """Returns the token filename for a given role (e.g., 'bot', 'personal')."""
-    return f"token.{role}.secret.json"
+    token_file = CONFIG_DIR / f"token.{role}.secret.json"
+    return str(token_file)
 
 def get_creds_interactive(role: str):
     """Runs the OAuth flow to get fresh credentials for a specific role."""

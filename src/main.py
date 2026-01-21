@@ -8,9 +8,9 @@ import functions_framework
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
-from email_agent.scenario_loader import load_scenario
-from email_agent.rubric_loader import load_rubric
-from email_agent.email_agent import EmailAgent, EmailMessage
+from .email_agent.scenario_loader import load_scenario
+from .email_agent.rubric_loader import load_rubric
+from .email_agent.email_agent import EmailAgent, EmailMessage
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 
 # Constants - Path resolution
 # Note: email_agent/ directory structure is preserved in Cloud Functions deployment
-BASE_DIR = Path(__file__).resolve().parent / "email_agent"
-DEFAULT_SCENARIO_PATH = BASE_DIR / "scenarios/missed_remote_standup.json"
-DEFAULT_RUBRIC_PATH = BASE_DIR / "rubrics/default.json"
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_SCENARIO_PATH = BASE_DIR / "email_agent/scenarios/missed_remote_standup.json"
+DEFAULT_RUBRIC_PATH = BASE_DIR / "email_agent/rubrics/default.json"
 
 # Canary log to verify logging is working in Cloud Functions
 logger.info("PEB Service module loaded. Logging is operational.")
