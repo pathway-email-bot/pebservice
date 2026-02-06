@@ -1,5 +1,6 @@
 {
   "name": "Missed Remote Standup",
+  "interaction_type": "initiate",
   "description": "Junior remote employee missed the daily standup due to an unexpected power and internet outage and needs to explain and give an update.",
   "environment": "remote_workplace",
   "counterpart_role": "US-based engineering manager",

@@ -15,7 +15,6 @@ from email.mime.text import MIMEText
 
 from email_agent.scenario_loader import load_scenario
 from email_agent.email_agent import EmailAgent
-from firestore_client import create_attempt, get_firestore_client
 from auth_utils import get_gmail_service
 
 # Setup logging
@@ -66,18 +65,20 @@ def _build_mime_message(from_addr: str, from_name: str, to_addr: str, subject: s
 @functions_framework.http
 def send_scenario_email(request: Request):
     """
-    HTTP Cloud Function to send scenario email.
+    HTTP Cloud Function to send scenario email (REPLY scenarios only).
+    Portal creates Firestore attempt BEFORE calling this function.
+    This function is ONLY for sending email.
     
     Request body:
     {
         "email": "student@example.com",
-        "scenarioId": "missed_remote_standup"
+        "scenarioId": "missed_remote_standup",
+        "attemptId": "abc123"
     }
     
     Response:
     {
         "success": true,
-        "attemptId": "abc123",
         "message": "Scenario email sent"
     }
     """
@@ -109,12 +110,15 @@ def send_scenario_email(request: Request):
         request_json = request.get_json() or {}
         student_email = request_json.get('email')
         scenario_id = request_json.get('scenarioId')
+        attempt_id = request_json.get('attemptId')
         
         # Validate request
         if not student_email:
             return {'error': 'Missing email in request'}, 400, cors_headers
         if not scenario_id:
             return {'error': 'Missing scenarioId in request'}, 400, cors_headers
+        if not attempt_id:
+            return {'error': 'Missing attemptId in request'}, 400, cors_headers
         
         # Verify user is requesting for their own email
         if student_email != token_email:
@@ -129,6 +133,11 @@ def send_scenario_email(request: Request):
         
         scenario = load_scenario(scenario_path)
         logger.info(f"Loaded scenario: {scenario_id}")
+        
+        # Verify this is a REPLY scenario (bot sends first)
+        if scenario.interaction_type != 'reply':
+            logger.warning(f"Attempt to send email for INITIATE scenario: {scenario_id}")
+            return {'error': 'This endpoint is only for REPLY scenarios. INITIATE scenarios do not send emails.'}, 400, cors_headers
         
         # Generate starter email using EmailAgent
         email_agent = EmailAgent()
@@ -153,16 +162,10 @@ def send_scenario_email(request: Request):
         )
         
         gmail_service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
-        logger.info(f"Email sent to {student_email} for scenario {scenario_id}")
-        
-        # Create Firestore attempt record
-        db = get_firestore_client()
-        attempt_id = create_attempt(student_email, scenario_id)
-        logger.info(f"Created attempt {attempt_id} for {student_email}")
+        logger.info(f"Email sent to {student_email} for scenario {scenario_id} (attempt {attempt_id})")
         
         return {
             'success': True,
-            'attemptId': attempt_id,
             'message': f'Scenario email sent to {student_email}',
         }, 200, cors_headers
         

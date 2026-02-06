@@ -1,5 +1,6 @@
 {
   "name": "Follow Up on Missing Documents",
+  "interaction_type": "initiate",
   "description": "Remote administrative assistant is waiting for important documents from a client and needs to follow up politely and clearly.",
   "environment": "remote_workplace",
   "counterpart_role": "HR coordinator at a partner company",

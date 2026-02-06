@@ -1,5 +1,6 @@
 {
   "name": "Follow Up on Late Invoice",
+  "interaction_type": "initiate",
   "description": "Freelance virtual assistant has sent an invoice that is now late and needs to follow up politely and professionally.",
   "environment": "freelance_client",
   "counterpart_role": "Small business owner client",

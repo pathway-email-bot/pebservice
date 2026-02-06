@@ -1,5 +1,6 @@
 {
   "name": "Clarify Vague Task",
+  "interaction_type": "initiate",
   "description": "Remote administrative assistant receives a short, unclear request to 'clean up the notes' and needs to ask for clarification without sounding rude or incompetent.",
   "environment": "remote_workplace",
   "counterpart_role": "US-based office manager",

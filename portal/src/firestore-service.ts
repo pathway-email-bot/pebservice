@@ -2,12 +2,12 @@
  * Firestore service for managing user attempts and scenarios
  */
 import { db, auth } from './firebase-config';
-import { collection, doc, onSnapshot, Unsubscribe, query, where, orderBy, limit, setDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, onSnapshot, Unsubscribe, query, where, orderBy, limit, setDoc, getDocs, updateDoc } from 'firebase/firestore';
 
 export interface Attempt {
     id: string;
     scenarioId: string;
-    status: 'pending' | 'awaiting_student_email' | 'graded' | 'abandoned';
+    status: 'pending' | 'graded' | 'abandoned';
     startedAt: Date;
     score?: number;
     maxScore?: number;
@@ -22,7 +22,7 @@ export interface UserData {
 
 /**
  * Create a new attempt for a scenario in Firestore
- * Called after sending scenario email
+ * Also updates user's activeScenarioId and activeAttemptId
  */
 export async function createAttempt(scenarioId: string): Promise<string> {
     const user = auth.currentUser;
@@ -39,6 +39,13 @@ export async function createAttempt(scenarioId: string): Promise<string> {
         status: 'pending',
         startedAt: now,
     });
+    
+    // Update user's active scenario and attempt
+    const userRef = doc(db, 'users', user.email);
+    await setDoc(userRef, {
+        activeScenarioId: scenarioId,
+        activeAttemptId: attemptRef.id,
+    }, { merge: true });
     
     return attemptRef.id;
 }
@@ -105,7 +112,7 @@ export function listenToActiveAttempt(callback: (attempt: Attempt | null) => voi
     const attemptsRef = collection(db, 'users', user.email, 'attempts');
     const q = query(
         attemptsRef,
-        where('status', 'in', ['pending', 'awaiting_student_email']),
+        where('status', '==', 'pending'),
         orderBy('startedAt', 'desc'),
         limit(1)
     );

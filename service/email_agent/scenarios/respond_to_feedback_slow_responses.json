@@ -1,5 +1,6 @@
 {
   "name": "Respond to Feedback on Slow Responses",
+  "interaction_type": "initiate",
   "description": "Remote administrative assistant receives feedback that their email responses have been too slow and needs to respond professionally and suggest improvements.",
   "environment": "remote_workplace",
   "counterpart_role": "US-based team lead",

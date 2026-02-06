@@ -1,5 +1,6 @@
 {
   "name": "Request Deadline Adjustment",
+  "interaction_type": "initiate",
   "description": "Remote data entry worker is given a large task with an unrealistic one-day deadline and needs to ask for a more realistic timeline.",
   "environment": "remote_workplace",
   "counterpart_role": "Project coordinator",

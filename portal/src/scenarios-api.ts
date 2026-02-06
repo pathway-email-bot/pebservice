@@ -11,6 +11,7 @@ const CLOUD_FUNCTION_BASE_URL = 'https://us-central1-pathway-email-bot-6543.clou
 export interface ScenarioMetadata {
   id: string;  // Extracted from filename (e.g., "missed_remote_standup")
   name: string;
+  interaction_type: 'initiate' | 'reply';  // Who sends email first
   description: string;
   environment: string;
   counterpart_role: string;
@@ -79,9 +80,10 @@ export async function listScenarios(): Promise<ScenarioMetadata[]> {
 }
 
 /**
- * Send scenario email to start a new attempt
+ * Send scenario email to start a new attempt (REPLY scenarios only)
+ * Note: Portal creates Firestore attempt BEFORE calling this
  */
-export async function sendScenarioEmail(scenarioId: string): Promise<SendScenarioResponse> {
+export async function sendScenarioEmail(scenarioId: string, attemptId: string): Promise<SendScenarioResponse> {
     const user = auth.currentUser;
     if (!user) {
         throw new Error('User not authenticated');
@@ -98,6 +100,7 @@ export async function sendScenarioEmail(scenarioId: string): Promise<SendScenari
         body: JSON.stringify({
             email: user.email,
             scenarioId,
+            attemptId,
         }),
     });
 

@@ -1,5 +1,6 @@
 {
   "name": "Respond to Customer Complaint",
+  "interaction_type": "initiate",
   "description": "Remote customer support assistant needs to respond to a polite customer complaint about a delayed reply or small mistake.",
   "environment": "customer_support",
   "counterpart_role": "Customer of a small online business",
