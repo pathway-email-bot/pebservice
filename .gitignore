@@ -16,3 +16,8 @@ temp_restore/
 
 # Note: Do NOT add *.json here - scenario/rubric JSON files must be committed.
 # Only secret-containing files (*.secret.json) are ignored above.
+
+# Portal build artifacts
+portal/node_modules/
+portal/dist/
+
