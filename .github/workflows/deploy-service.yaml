@@ -52,8 +52,7 @@ jobs:
             --source=service \
             --entry-point=process_email \
             --trigger-topic=${{ env.TOPIC_NAME }} \
-            --set-secrets="GMAIL_CLIENT_ID=gmail-client-id:latest,GMAIL_CLIENT_SECRET=gmail-client-secret:latest,GMAIL_REFRESH_TOKEN=gmail-refresh-token-bot:latest" \
-            --set-env-vars="OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}"
+            --set-secrets="GMAIL_CLIENT_ID=gmail-client-id:latest,GMAIL_CLIENT_SECRET=gmail-client-secret:latest,GMAIL_REFRESH_TOKEN=gmail-refresh-token-bot:latest,OPENAI_API_KEY=openai_api_key:latest"
 
       - name: Deploy send_scenario_email to Cloud Functions (Gen 2)
         run: |

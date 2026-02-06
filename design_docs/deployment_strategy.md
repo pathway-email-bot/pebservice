@@ -69,32 +69,27 @@ We have **3 separate deployments**:
 | Secret | Purpose | Updated |
 |--------|---------|---------|
 | `GCP_SA_KEY` | Service account key JSON for deployment | Initial setup |
-| `GMAIL_CLIENT_ID` | OAuth client ID | ⚠️ Synced but not used anymore |
-| `GMAIL_CLIENT_SECRET` | OAuth client secret | ⚠️ Synced but not used anymore |
-| `GMAIL_REFRESH_TOKEN` | OAuth refresh token | ⚠️ Synced but not used anymore |
-| `OPENAI_API_KEY` | OpenAI API key for grading | As needed |
 
-**GCP Secret Manager** (Source of truth for Gmail credentials):
+**GCP Secret Manager** (Source of truth for runtime secrets):
 | Secret | Purpose | Updated |
 |--------|---------|---------|
 | `gmail-client-id` | OAuth client ID | 2026-02-06 via sync_secrets.py |
 | `gmail-client-secret` | OAuth client secret | 2026-02-06 via sync_secrets.py |
 | `gmail-refresh-token-bot` | Refresh token | 2026-02-06 via get_token.py |
+| `openai_api_key` | OpenAI API key | 2026-02-06 |
 
 ### Current Deployment YAML Strategy
 
 ```yaml
-# GMAIL credentials: Using GCP Secret Manager (✅ Better)
---set-secrets="GMAIL_CLIENT_ID=gmail-client-id:latest,..."
-
-# OpenAI: Using GitHub Secret as env var (✅ OK for now)
---set-env-vars="OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}"
+# All runtime secrets: Using GCP Secret Manager (✅ Best practice)
+--set-secrets="GMAIL_CLIENT_ID=gmail-client-id:latest,GMAIL_CLIENT_SECRET=gmail-client-secret:latest,GMAIL_REFRESH_TOKEN=gmail-refresh-token-bot:latest,OPENAI_API_KEY=openai_api_key:latest"
 ```
 
-**Why this hybrid?**
-- Gmail secrets change rarely but need to be rotated → Secret Manager is better
-- OpenAI key is simple, stable, and only in GitHub Secrets → env var is fine
-- Eventually could move OpenAI to Secret Manager too
+**Benefits:**
+- Single source of truth for all runtime secrets
+- Consistent secret rotation workflow
+- IAM-based access control
+- Can use `scripts/sync_secrets.py` for management
 
 ---
 
@@ -199,19 +194,18 @@ Orphaned secrets removed after migrating to GCP Secret Manager:
 - ❌ `GMAIL_CLIENT_ID` - Now in Secret Manager
 - ❌ `GMAIL_CLIENT_SECRET` - Now in Secret Manager  
 - ❌ `GMAIL_REFRESH_TOKEN` - Now in Secret Manager
+- ❌ `OPENAI_API_KEY` - Now in Secret Manager
 - ❌ `GMAIL_TEST` - Old test secret
 - ❌ `GMAIL_REF_TEST` - Old test secret
 
 Remaining secrets (still needed):
-- ✅ `GCP_SA_KEY` - Deployment service account key
-- ✅ `OPENAI_API_KEY` - OpenAI API key (could move to Secret Manager later)
+- ✅ `GCP_SA_KEY` - Deployment service account key (only secret left!)
 
 ---
 
 ## Future Improvements
 
 See [todo_some_other_day.md](current_working/todo_some_other_day.md):
-1. Workload Identity Federation (eliminate service account keys)
+1. Workload Identity Federation (eliminate GCP_SA_KEY)
 2. Automated Gmail OAuth token refresh
-3. Move OPENAI_API_KEY to Secret Manager
-4. Infrastructure as Code with Terraform
+3. Infrastructure as Code with Terraform
