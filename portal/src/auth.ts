@@ -31,9 +31,13 @@ function debugError(message: string, error: any) {
 
 // Action code settings for the magic link
 const getActionCodeSettings = () => {
+    // Get the base path from import.meta.env.BASE_URL (set by Vite)
+    const basePath = import.meta.env.BASE_URL;
+    const redirectPath = basePath === '/' ? '/scenarios' : `${basePath}scenarios`;
+    
     const settings = {
         // URL to redirect to after clicking the link
-        url: window.location.origin + '/scenarios',
+        url: window.location.origin + redirectPath,
         handleCodeInApp: true,
     };
 
