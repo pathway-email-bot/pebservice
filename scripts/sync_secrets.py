@@ -31,7 +31,7 @@ GCP_SECRETS = {
     "gmail-client-id": "GMAIL_CLIENT_ID",       # GCP name -> GitHub name
     "gmail-client-secret": "GMAIL_CLIENT_SECRET",
     # Add more secrets here as needed:
-    # "openai-api-key": "OPENAI_API_KEY",
+    "openai-api-key": "openai_api_key",
     # "gmail-refresh-token": "GMAIL_REFRESH_TOKEN",
 }
 

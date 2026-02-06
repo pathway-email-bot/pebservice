@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'portal/**'
+      - 'service/email_agent/scenarios/**'
       - '.github/workflows/deploy-portal.yaml'
   workflow_dispatch:
 
@@ -34,6 +35,14 @@ jobs:
       
       - name: Install dependencies
         run: cd portal && npm ci
+      
+      - name: Copy scenario files from service
+        run: |
+          mkdir -p portal/public/scenarios
+          cp service/email_agent/scenarios/*.json portal/public/scenarios/
+          cd portal/public/scenarios
+          ls -1 *.json | jq -R -s -c 'split("\n")[:-1]' > manifest.json
+          echo "Created manifest with $(cat manifest.json | jq length) scenarios"
       
       - name: Build
         run: cd portal && npm run build

@@ -2,9 +2,11 @@
  * Scenarios Page Component
  * 
  * Displays the list of available email practice scenarios.
+ * Scenarios are loaded from bundled static files (fetched at build time from service).
  */
 
 import { completeMagicLinkSignIn, onAuthChange, logout, getCurrentUser } from '../auth';
+import { listScenarios, sendScenarioEmail, type ScenarioMetadata } from '../scenarios-api';
 import type { User } from 'firebase/auth';
 
 export async function renderScenariosPage(container: HTMLElement): Promise<void> {
@@ -22,7 +24,7 @@ export async function renderScenariosPage(container: HTMLElement): Promise<void>
     const currentUser = getCurrentUser();
 
     if (currentUser) {
-        renderAuthenticatedView(container, currentUser);
+        await renderAuthenticatedView(container, currentUser);
     } else {
         renderUnauthenticatedView(container);
     }
@@ -37,7 +39,10 @@ export async function renderScenariosPage(container: HTMLElement): Promise<void>
     });
 }
 
-function renderAuthenticatedView(container: HTMLElement, user: User): void {
+async function renderAuthenticatedView(container: HTMLElement, user: User): Promise<void> {
+    // Load scenarios from bundled files
+    const scenarios = await listScenarios();
+    
     container.innerHTML = `
     <div class="scenarios-page">
       <header class="page-header">
@@ -52,12 +57,7 @@ function renderAuthenticatedView(container: HTMLElement, user: User): void {
         <p class="subtitle">Choose a scenario to practice your professional email skills</p>
         
         <div class="scenario-list">
-          ${renderScenarioCard(1, 'Introduce yourself as a new member of a team', 'available')}
-          ${renderScenarioCard(2, 'Explain why you were late for standup', 'available')}
-          ${renderScenarioCard(3, 'Clarify a vague task assigned from a manager', 'available')}
-          ${renderScenarioCard(4, 'Correct an error found in a report', 'available')}
-          ${renderScenarioCard(5, 'Reschedule a meeting due to a conflicting appointment', 'available')}
-          ${renderScenarioCard(6, 'Respond to feedback that you have slow responses', 'available')}
+          ${scenarios.map(scenario => renderScenarioCard(scenario)).join('')}
         </div>
       </main>
     </div>
@@ -71,29 +71,45 @@ function renderAuthenticatedView(container: HTMLElement, user: User): void {
 
     // Add start button handlers
     document.querySelectorAll('.start-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             const scenarioId = (e.target as HTMLElement).dataset.scenarioId;
-            alert(`Starting scenario #${scenarioId}! (Coming soon)`);
+            if (!scenarioId) return;
+            
+            const button = e.target as HTMLButtonElement;
+            button.disabled = true;
+            button.textContent = 'Starting...';
+            
+            try {
+                const result = await sendScenarioEmail(scenarioId);
+                if (result.success) {
+                    alert(`✅ Scenario started! Check your email for the scenario prompt. (Attempt: ${result.attemptId})`);
+                    button.textContent = 'Started';
+                    button.classList.add('disabled');
+                } else {
+                    alert('❌ Failed to start scenario. Please try again.');
+                    button.disabled = false;
+                    button.textContent = 'Start';
+                }
+            } catch (error) {
+                console.error('Error starting scenario:', error);
+                alert(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                button.disabled = false;
+                button.textContent = 'Start';
+            }
         });
     });
 }
 
-function renderScenarioCard(id: number, title: string, status: 'available' | 'pending' | 'completed'): string {
-    const statusBadge = status === 'completed'
-        ? '<span class="badge badge-success">✓ Completed</span>'
-        : status === 'pending'
-            ? '<span class="badge badge-warning">Pending</span>'
-            : '';
-
+function renderScenarioCard(scenario: ScenarioMetadata): string {
     return `
     <div class="scenario-card">
       <div class="scenario-info">
-        <span class="scenario-number">#${id}</span>
-        <span class="scenario-title">${title}</span>
-        ${statusBadge}
+        <h3 class="scenario-title">${scenario.name}</h3>
+        <p class="scenario-description">${scenario.description}</p>
+        <p class="scenario-role"><strong>Counterpart:</strong> ${scenario.counterpart_role}</p>
       </div>
-      <button class="btn btn-primary start-btn" data-scenario-id="${id}">
-        ${status === 'completed' ? 'Try Again' : 'Start'}
+      <button class="btn btn-primary start-btn" data-scenario-id="${scenario.id}">
+        Start
       </button>
     </div>
   `;

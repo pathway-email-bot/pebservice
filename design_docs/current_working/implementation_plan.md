@@ -41,15 +41,18 @@ Enable students to: log in → select a scenario → receive scenario email → 
 
 ## Proposed Changes
 
-### Student Portal (`student-portal`)
+### Student Portal (`portal`)
 
 #### [NEW] `src/scenarios-api.ts`
-- Fetch available scenarios from pebservice (or static JSON for now)
+- **Load scenarios from build-time bundled static files** (fetched during GitHub Actions build)
+  - JSONs copied from `service/email_agent/scenarios/` → `portal/public/scenarios/` at build time
+  - Single source of truth: scenarios only in service side
+  - New scenarios require redeploying portal (handled by monorepo triggers)
 - Call Cloud Function to start a scenario
 - Types for scenario metadata
 
 #### [MODIFY] `src/pages/scenarios.ts`
-- Replace hardcoded scenarios with dynamic fetch from `listScenarios`
+- Replace hardcoded scenarios with runtime fetch from `listScenarios()`
 - **Single active scenario UX**:
   - Scenario cards show title + brief description only (instructions hidden)
   - Clicking "Start" reveals full instructions + marks scenario as active
@@ -239,13 +242,21 @@ users/{email}/
 
 ```
 1. Student logs in (existing)
-2. Student sees scenario list (fetch from static config for now)
-3. Student clicks "Start" → calls Cloud Function
-4. Cloud Function sends scenario email + creates Firestore doc
-5. Student replies to email
-6. pebservice grades reply → updates Firestore
-7. Portal shows score via real-time listener
+2. Portal loads scenario list from bundled static files (fetched at build time)
+3. Student sees scenario list
+4. Student clicks "Start" → calls Cloud Function sendScenarioEmail
+5. Cloud Function sends scenario email + creates Firestore doc
+6. Student replies to email
+7. pebservice grades reply → updates Firestore
+8. Portal shows score via real-time listener
 ```
+
+**Deployment flow for new scenarios:**
+- Add new scenario JSON to `service/email_agent/scenarios/`
+- Commit and push to main branch
+- GitHub Actions auto-triggers portal deployment (via path filter)
+- Portal build copies JSON, bundles it, and deploys to GitHub Pages
+- Students see new scenario immediately
 
 ---
 
@@ -303,25 +314,62 @@ email = decoded['email']
 
 **Question**: Where does the portal get the list of available scenarios?
 
-**Decision**: ✅ **Build-time fetch (Option C)**
+**Decision**: ✅ **Build-time fetch with monorepo triggers**
 
-GitHub Actions workflow fetches scenarios from pebservice at deploy time:
+GitHub Actions workflow fetches scenarios during portal deployment and bundles them as static files:
 
 ```yaml
-# .github/workflows/deploy.yml
-steps:
-  - name: Fetch scenarios from pebservice
-    run: |
-      curl -L https://api.github.com/repos/OWNER/pebservice/contents/src/email_agent/scenarios \
-        | jq -r '.[].download_url' \
-        | xargs -I {} curl -L {} -o src/scenarios/
-      # Or simpler: assume repos side-by-side in CI
+# .github/workflows/deploy-portal.yml
+name: Deploy Portal
+
+on:
+  push:
+    paths:
+      - 'portal/**'
+      - 'service/email_agent/scenarios/**'  # Redeploy portal when scenarios change
+      - '.github/workflows/deploy-portal.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Fetch scenarios from service
+        run: |
+          mkdir -p portal/public/scenarios
+          cp service/email_agent/scenarios/*.json portal/public/scenarios/
+      
+      - name: Build portal
+        run: cd portal && npm install && npm run build
+      
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./portal/dist
 ```
 
-**Trade-offs accepted**:
-- New scenario requires deploying both pebservice AND student-portal
-- Aligns with long-term plan to merge into monorepo
-- No runtime dependency on external fetch
+Portal reads static files:
+```typescript
+// src/scenarios-api.ts
+async function listScenarios(): Promise<ScenarioMetadata[]> {
+  const response = await fetch('/pebservice/scenarios/'); // Static files from build
+  const dir = await response.json(); // Or manually list if no directory listing
+  const scenarios = await Promise.all(
+    dir.map(filename => fetch(`/pebservice/scenarios/${filename}`).then(r => r.json()))
+  );
+  return scenarios;
+}
+```
+
+**Benefits**:
+- ✅ Single source of truth: scenario JSONs only in `service/email_agent/scenarios/`
+- ✅ No duplication
+- ✅ No runtime API dependencies or rate limits
+- ✅ Fast: static file reads
+- ✅ Monorepo triggers: updating a scenario JSON auto-redeploys both services
+- ✅ Clean coupling: only JSON files and location
 
 ---
 
