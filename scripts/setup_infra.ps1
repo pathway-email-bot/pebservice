@@ -66,10 +66,12 @@ gcloud iam service-accounts create $SERVICE_ACCOUNT_NAME --display-name "PEB Ser
 
 # 7. Grant Permissions
 Write-Host "7. Setting up IAM permissions..."
-# Grant Pub/Sub Publisher to Gmail (Note: This is usually done via API, but we check if we can add binding)
-# For this script, we'll ensure the Service Account has what it needs to run
+# Permissions for GitHub Actions deployment service account
+gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com" --role="roles/cloudfunctions.developer" --quiet
+gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com" --role="roles/run.admin" --quiet
 gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com" --role="roles/logging.logWriter" --quiet
-gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com" --role="roles/pubsub.subscriber" --quiet
+gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com" --role="roles/pubsub.editor" --quiet
+Write-Host "   Granted Cloud Functions and Cloud Run deployment permissions." -ForegroundColor Green
 
 Write-Host ""
 Write-Host "Setup Complete!" -ForegroundColor Cyan

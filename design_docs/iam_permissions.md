@@ -2,12 +2,19 @@
 
 ## Service Accounts
 
-### Cloud Functions Service Account
+### Cloud Functions Runtime Service Account
 Both Cloud Functions run as the default Compute Engine service account:
 - **Account**: `687061619628-compute@developer.gserviceaccount.com`
+- **Purpose**: Execute Cloud Functions code at runtime
 - **Functions using this account**:
   - `process_email` (Pub/Sub triggered)
   - `send_scenario_email` (HTTP triggered)
+
+### GitHub Actions Deployment Service Account
+GitHub Actions uses this service account to deploy Cloud Functions:
+- **Account**: `peb-service-account@pathway-email-bot-6543.iam.gserviceaccount.com`
+- **Purpose**: Deploy Cloud Functions from CI/CD pipeline
+- **Auth Method**: Service account key stored in `GCP_SA_KEY` GitHub Secret
 
 ### Required IAM Permissions
 
@@ -29,6 +36,29 @@ gcloud secrets add-iam-policy-binding gmail-client-secret \
 gcloud secrets add-iam-policy-binding gmail-refresh-token-bot \
   --member="serviceAccount:687061619628-compute@developer.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
+```
+
+**Status**: ✅ Configured (2026-02-06)
+
+#### Deployment Service Account Permissions
+The deployment service account needs permissions to deploy Cloud Functions Gen 2:
+
+```bash
+# Cloud Functions Developer - Deploy functions
+gcloud projects add-iam-policy-binding pathway-email-bot-6543 \
+  --member="serviceAccount:peb-service-account@pathway-email-bot-6543.iam.gserviceaccount.com" \
+  --role="roles/cloudfunctions.developer"
+
+# Cloud Run Admin - Manage Cloud Run services (Gen 2 functions run on Cloud Run)
+gcloud projects add-iam-policy-binding pathway-email-bot-6543 \
+  --member="serviceAccount:peb-service-account@pathway-email-bot-6543.iam.gserviceaccount.com" \
+  --role="roles/run.admin"
+
+# Other roles automatically granted:
+# - roles/iam.serviceAccountUser (act as runtime service account)
+# - roles/artifactregistry.writer (push container images)
+# - roles/pubsub.editor (configure Pub/Sub triggers)
+# - roles/logging.logWriter (write deployment logs)
 ```
 
 **Status**: ✅ Configured (2026-02-06)
