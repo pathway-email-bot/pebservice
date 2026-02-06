@@ -1,8 +1,8 @@
-# Monorepo Migration Plan
+# Monorepo Migration - ✅ COMPLETED
 
-Merge `student-portal` into `pebservice` as a monorepo.
+**Status**: Migration completed on 2026-02-06
 
-## Target Structure
+## What Was Done
 
 ```
 pebservice/
@@ -27,71 +27,69 @@ pebservice/
 
 After migration: `https://pathway-email-bot.github.io/pebservice/`
 
+## GitHub Pages URL
+
+Portal is live at: `https://pathway-email-bot.github.io/pebservice/`
+
 ---
 
-## Migration Steps
+## Completed Steps
 
-### Step 1: Restructure pebservice
-1. Rename `src/` → `service/`
-2. Update `deploy.yaml` to reference `service/` directory
-3. Update any imports/paths in Python code
+### 1. ✅ Restructured pebservice
+- Renamed `src/` → `service/`
+- Updated `deploy.yaml` → `deploy-service.yaml` with path filter `service/**`
+- Updated gcloud deploy command to use `--source=service`
 
-### Step 2: Copy student-portal content
-1. Copy `student-portal/src/` → `pebservice/portal/src/`
-2. Copy `student-portal/package.json`, `tsconfig.json`, `index.html`
-3. Copy `student-portal/public/`
-4. Merge `student-portal/design_docs/` into `pebservice/design_docs/`
+### 2. ✅ Migrated student-portal content
+- Copied `student-portal/src/` → `pebservice/portal/src/`
+- Copied `package.json`, `tsconfig.json`, `index.html`, `public/`
+- Merged `design_docs/` from both repos
 
-### Step 3: Create portal deploy workflow
-```yaml
-# .github/workflows/deploy-portal.yaml
-name: Deploy Portal to GitHub Pages
+### 3. ✅ Created portal deployment
+- Created `.github/workflows/deploy-portal.yaml` for GitHub Pages
+- Path filter: `portal/**` (only deploys when portal changes)
+- Created `portal/vite.config.ts` with `base: '/pebservice/'`
 
-on:
-  push:
-    branches: [main]
-    paths: ['portal/**']  # Only trigger on portal changes
-  workflow_dispatch:
+### 4. ✅ Updated configuration
+- Updated `.gitignore` for portal build artifacts
+- Updated `readme.md` with monorepo structure
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: cd portal && npm ci && npm run build
-      - uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./portal/dist
+### 5. ✅ Cleanup
+- Deleted GitHub repo `pathway-email-bot/student-portal`
+- Made `pebservice` repo public (enables free GitHub Pages)
+- Enabled GitHub Pages with GitHub Actions deployment
+
+---
+
+## Final Structure
+
+```
+pebservice/
+├── .github/workflows/
+│   ├── deploy-service.yaml    # Triggers on service/** changes
+│   └── deploy-portal.yaml     # Triggers on portal/** changes
+├── service/                   # Cloud Functions (Python)
+│   ├── main.py
+│   ├── email_agent/
+│   └── requirements.txt
+├── portal/                    # Student portal (TypeScript/Vite)
+│   ├── src/
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── index.html
+├── design_docs/               # Merged documentation
+└── readme.md
 ```
 
-### Step 4: Update existing service workflow
-- Rename to `deploy-service.yaml`
-- Add path filter: `paths: ['service/**']`
-- Update `--source=service` in gcloud command
-
-### Step 5: Update portal vite config
-Set `base: '/pebservice/'` for GitHub Pages subdirectory hosting.
-
-### Step 6: Archive student-portal repo
-After confirming everything works, archive or delete the separate repo.
-
 ---
 
-## Files to Update
+## Next Steps
 
-| File | Change |
-|------|--------|
-| `deploy.yaml` → `deploy-service.yaml` | Change `--source=src` to `--source=service`, add path filter |
-| `portal/vite.config.ts` | Add `base: '/pebservice/'` |
-| Python imports | Should work (relative imports within `service/`) |
+With the monorepo complete, proceed to implement the end-to-end student portal flow:
+1. Implement `sendScenarioEmail` Cloud Function
+2. Update `main.py` for Firestore-based scenario matching
+3. Update portal to fetch scenarios and integrate with Firestore
+4. Deploy Firestore security rules
 
-## Risks
-- Git history for student-portal won't be preserved (copy, not merge)
-- Need to update any hardcoded paths
+See `implementation_plan.md` for details.
 
-## Decision Needed
-Proceed with migration?
