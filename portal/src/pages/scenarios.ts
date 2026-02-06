@@ -127,8 +127,16 @@ async function handleStartScenario(e: Event): Promise<void> {
     if (!scenario) return;
     
     const button = e.target as HTMLButtonElement;
+    const card = button.closest('.scenario-card');
+    const errorDiv = card?.querySelector('.error-message') as HTMLElement;
+    
+    // Clear any previous errors
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+    }
+    
     button.disabled = true;
-    button.textContent = 'Starting...';
+    button.innerHTML = '⏳ Starting...';
     
     try {
         // 1. Always create Firestore attempt first
@@ -143,7 +151,7 @@ async function handleStartScenario(e: Event): Promise<void> {
             } catch (emailError) {
                 console.error('Error sending scenario email:', emailError);
                 // Don't fail the whole operation - user can retry with "Resend Email" button
-                alert(`⚠️ Scenario started but email sending failed. Use the "Resend Email" button to retry.`);
+                // Show warning in the expanded drawer (will be visible after rerender)
             }
         }
         
@@ -162,7 +170,13 @@ async function handleStartScenario(e: Event): Promise<void> {
         
     } catch (error) {
         console.error('Error starting scenario:', error);
-        alert(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        
+        if (errorDiv) {
+            errorDiv.textContent = `❌ Error: ${errorMessage}`;
+            errorDiv.style.display = 'block';
+        }
+        
         button.disabled = false;
         button.textContent = 'Start';
     }
@@ -173,23 +187,39 @@ async function handleResendEmail(e: Event): Promise<void> {
     if (!scenarioId || !activeAttemptId) return;
     
     const button = e.target as HTMLButtonElement;
+    const drawer = button.closest('.scenario-drawer');
+    const statusSection = drawer?.querySelector('.status-section') as HTMLElement;
     const originalText = button.textContent;
+    
     button.disabled = true;
-    button.textContent = 'Sending...';
+    button.innerHTML = '⏳ Sending...';
     
     try {
         await sendScenarioEmail(scenarioId, activeAttemptId);
-        alert('✅ Email resent! Check your inbox.');
-        button.textContent = 'Resent ✓';
+        
+        if (statusSection) {
+            statusSection.innerHTML = '<p class="success-status">✅ Email sent! Check your inbox.</p>';
+        }
+        
+        button.innerHTML = '✓ Sent';
         setTimeout(() => {
-            button.textContent = originalText;
+            button.innerHTML = originalText || '📧 Resend Email';
             button.disabled = false;
-        }, 2000);
+            
+            if (statusSection) {
+                statusSection.innerHTML = '<p class="pending-status">⏳ Waiting for your email...</p>';
+            }
+        }, 3000);
     } catch (error) {
         console.error('Error resending email:', error);
-        alert(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        
+        if (statusSection) {
+            statusSection.innerHTML = `<p class="error-status">❌ Error: ${errorMessage}</p>`;
+        }
+        
         button.disabled = false;
-        button.textContent = originalText;
+        button.innerHTML = originalText || '📧 Resend Email';
     }
 }
 
@@ -247,9 +277,12 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
           <p class="scenario-role"><strong>Counterpart:</strong> ${scenario.counterpart_role}</p>
         </div>
         ${!isActive ? `
-          <button class="btn btn-primary start-btn" data-scenario-id="${scenario.id}">
-            Start
-          </button>
+          <div class="scenario-actions">
+            <div class="error-message" style="display: none;"></div>
+            <button class="btn btn-primary start-btn" data-scenario-id="${scenario.id}">
+              Start
+            </button>
+          </div>
         ` : ''}
       </div>
       

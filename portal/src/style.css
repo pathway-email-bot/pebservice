@@ -388,6 +388,7 @@ form .btn-primary {
 .start-btn {
   flex-shrink: 0;
   width: auto;
+  min-width: 100px;
   padding: var(--spacing-sm) var(--spacing-lg);
 }
 
@@ -457,6 +458,57 @@ form .btn-primary {
   align-items: center;
   gap: var(--spacing-sm);
   margin-bottom: 0;
+}
+
+.success-status {
+  color: var(--color-success);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: 0;
+}
+
+.error-status {
+  color: var(--color-error);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: 0;
+}
+
+/* Scenario Actions Container */
+.scenario-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+/* Error Message Display */
+.error-message {
+  color: var(--color-error);
+  background: #FFEBEE;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  border-left: 3px solid var(--color-error);
+  max-width: 300px;
+  text-align: left;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .grading-results {
