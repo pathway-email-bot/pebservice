@@ -8,7 +8,7 @@ import uuid
 
 def get_firestore_client():
     """Returns Firestore client (uses default credentials in Cloud Functions)"""
-    return firestore.Client()
+    return firestore.Client(database='pathway')
 
 def create_attempt(email: str, scenario_id: str) -> str:
     """

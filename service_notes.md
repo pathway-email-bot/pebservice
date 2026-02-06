@@ -12,7 +12,7 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 | **Pub/Sub Subscription** | `eventarc-us-central1-process-email-479061-sub-493` | Eventarc-managed, triggers Cloud Function |
 | **Cloud Function** | `process_email` | Core AI logic and email handler |
 | **Cloud Function** | `send_scenario_email` | HTTP endpoint for sending scenario starter emails |
-| **Firestore Database** | `(default)` | Stores user attempts, active scenarios, and grading results |
+| **Firestore Database** | `pathway` | Stores user attempts, active scenarios, and grading results |
 | **Service Account** | `687061619628-compute@developer.gserviceaccount.com` | Default Compute SA used by functions |
 | **AI Model** | `gpt-4o` (OpenAI) | LLM for grading and responses |
 | **Secret Manager** | `gmail-client-id`, `gmail-client-secret`, `gmail-refresh-token-bot`, `openai-api-key` | OAuth credentials and API keys |

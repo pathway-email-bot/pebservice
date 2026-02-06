@@ -12,9 +12,11 @@ Usage:
     python get_token.py              # Interactive - will prompt which account
     python get_token.py --bot        # Refresh bot token (pathwayemailbot@gmail.com)
     python get_token.py --personal   # Refresh personal token (michaeltreynolds@gmail.com)
+    python get_token.py --test       # Refresh test token (michaeltreynolds.test@gmail.com)
 
 The bot token is used by the Cloud Function to read/send emails.
 The personal token is used locally for sending test emails.
+The test token is used for automated testing scenarios.
 """
 
 import os
@@ -48,6 +50,13 @@ ACCOUNTS = {
         "gcp_secret": "gmail-refresh-token-personal",
         "github_secret": None,  # Not synced to GitHub
         "local_file": "token.personal.secret.json",
+    },
+    "test": {
+        "email": "michaeltreynolds.test@gmail.com",
+        "description": "Test account (for automated testing)",
+        "gcp_secret": "gmail-refresh-token-test",
+        "github_secret": None,  # Not synced to GitHub
+        "local_file": "token.test.secret.json",
     },
 }
 
@@ -188,14 +197,22 @@ def main():
         role = "bot"
     elif "--personal" in sys.argv:
         role = "personal"
+    elif "--test" in sys.argv:
+        role = "test"
     else:
         print_header("Gmail Token Generator")
         print("\nWhich account do you want to refresh?\n")
         print("  1. pathwayemailbot@gmail.com (bot - for Cloud Function)")
         print("  2. michaeltreynolds@gmail.com (personal - for testing)")
+        print("  3. michaeltreynolds.test@gmail.com (test - for automated testing)")
         print()
-        choice = input("Enter 1 or 2: ").strip()
-        role = "bot" if choice == "1" else "personal"
+        choice = input("Enter 1, 2, or 3: ").strip()
+        if choice == "1":
+            role = "bot"
+        elif choice == "2":
+            role = "personal"
+        else:
+            role = "test"
     
     info = ACCOUNTS[role]
     
