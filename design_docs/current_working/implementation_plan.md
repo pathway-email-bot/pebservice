@@ -48,76 +48,80 @@ Enable students to: log in → select a scenario → receive scenario email → 
   - JSONs copied from `service/email_agent/scenarios/` → `portal/public/scenarios/` at build time
   - Single source of truth: scenarios only in service side
   - New scenarios require redeploying portal (handled by monorepo triggers)
-- Call Cloud Function to start a scenario
-- Types for scenario metadata
+- Call Cloud Function to start REPLY scenarios (bot sends email first)
+- Types for scenario metadata including `interaction_type`
 
 #### [MODIFY] `src/pages/scenarios.ts`
 - Replace hardcoded scenarios with runtime fetch from `listScenarios()`
-- **Single active scenario UX**:
-  - Scenario cards show title + brief description only (instructions hidden)
-  - Clicking "Start" reveals full instructions + marks scenario as active
-  - Only one scenario can be "open" at a time (drawer metaphor)
-  - Active scenario is visually distinct: highlighted border, "ACTIVE" badge, or subtle glow
-  - Clicking "Start" on a new scenario abandons the previous one (with confirmation if pending)
+- **Single active scenario UX (Drawer Pattern)**:
+  - All scenarios show as collapsed cards with "Start" button visible
+  - Clicking "Start" → **Opens drawer** with full instructions + marks as active in Firestore
+  - Only **ONE drawer can be open** at a time (the active scenario)
+  - Visually clear which scenario is active (expanded drawer)
+  - Starting a new scenario closes previous drawer and updates Firestore active scenario
+- **Two interaction types** (portal ALWAYS writes to Firestore first):
+  - **INITIATE** (student sends first): Portal writes to Firestore, shows instructions to compose email
+  - **REPLY** (bot sends first): Portal writes to Firestore AND calls Cloud Function to send email, shows instructions to check inbox with "Resend Email" button
 - Add Firestore real-time listener for attempt status updates
 - Show score/feedback inline when graded
 
 #### [NEW] `src/firestore-service.ts`
-- CRUD for user attempts in Firestore
-- Real-time listeners for status updates
+- **Direct Firestore writes** for ALL scenarios (portal owns state management)
+- `createAttempt(scenarioId)` - creates attempt with `status: "pending"` and updates user's activeScenarioId/activeAttemptId
+- Real-time listeners for attempt status updates
 - Types matching Firestore schema
+- **Authentication**: Uses Firebase ID token from magic link (portal has full Firestore access for user's own data)
 
 ---
 
 ### PEB Service (`pebservice`)
 
-#### [NEW] `src/send_scenario.py` - HTTP Cloud Function
+#### [NEW] `src/send_scenario.py` - HTTP Cloud Function (REPLY scenarios only)
 
 **Endpoint**: `POST /sendScenarioEmail`
+
+**Used for**: Scenarios where bot sends email first (REPLY type)
 
 **Request body**:
 ```json
 {
   "email": "student@example.com",
-  "scenarioId": "missed_remote_standup"
+  "scenarioId": "missed_remote_standup",
+  "attemptId": "abc123"
 }
 ```
 
 **What it does**:
 1. Load scenario JSON from `src/email_agent/scenarios/{scenarioId}.json`
-2. Generate starter email using `EmailAgent.build_starter_thread()` (already exists in email_agent)
-3. Send email via Gmail API with:
+2. **Verify** `interaction_type === "reply"` (reject INITIATE scenarios)
+3. Generate starter email using `EmailAgent.build_starter_thread()`
+4. Send email via Gmail API with:
    - **FROM**: `"Jordan Smith (Engineering Manager)" <pathwayemailbot@gmail.com>` (from `starter_sender_name`)
    - **SUBJECT**: `[PEB:missed_remote_standup] Missed standup this morning` (tagged for tracking)
    - **BODY**: Generated or from `starter_email_body`
-4. Create Firestore doc at `users/{email}/attempts/{attemptId}` with status "pending"
-5. Return `{ attemptId, success: true }`
+5. Return `{ success: true }`
 
-**Response**:
-```json
-{
-  "success": true,
-  "attemptId": "abc123",
-  "message": "Scenario email sent"
-}
-```
+**Key change**: Portal creates Firestore doc BEFORE calling this function. This function is ONLY for sending email (can be retried via "Resend Email" button).
+
+**Note**: INITIATE scenarios never call this Cloud Function - portal only writes to Firestore
 
 ---
 
 > **Note**: `listScenarios` endpoint NOT needed - scenarios are bundled into portal at build time.
 
 ---
+Interaction Types
 
-#### [MODIFY] `src/main.py` - Existing Pub/Sub Function
+All scenarios have `"interaction_type"` field in JSON:
 
-**Design Decision: How does pebservice know which scenario an email belongs to?**
+| Type | Who sends first? | Example | Portal Action |
+|------|------------------|---------|---------------|
+| **`"initiate"`** | Student sends fresh email | "Write an email requesting time off" | Writes to Firestore only |
+| **`"reply"`** | Bot sends, student replies | "Reply to manager's email about missing standup" | Writes to Firestore + calls Cloud Function |
 
-##### Scenario Types
+**Current scenarios**: All 11 scenarios are `"initiate"` type (student sends first email)
 
-| Type | Example | Who sends first? |
-|------|---------|------------------|
-| **Reply** | "You missed standup, explain yourself" | Bot sends prompt, student replies |
-| **Initiate** | "Write an email to request time off" | Student sends from scratch |
+**Flow consistency**: Portal ALWAYS creates Firestore attempt first, then optionally sends email for REPLY scenarios
 
 ---
 
@@ -131,29 +135,26 @@ Enable students to: log in → select a scenario → receive scenario email → 
 - Bot email contains `<!-- PEB:missed_remote_standup -->` or similar
 - Parse from thread when reply comes in
 - ❌ Doesn't work for student-initiates scenarios
-- ⚠️ Email clients may strip HTML comments
 
-##### Option C: Thread History Lookup
-- When email arrives, check if thread contains a prior bot-sent email
-- Look up original scenario from that email's metadata
-- ❌ Doesn't work for student-initiates scenarios
-- ❌ Extra API calls per message
+##### Option D: Firestore as Source of Truth ✅ (Implemented)
 
-##### Option D: Firestore as Source of Truth ✅ (Recommended)
+**Flow for REPLY scenarios (bot sends first):**
+1. User clicks "Start" → Portal writes to Firestore: `{ scenarioId, status: "pending" }` + updates `activeScenarioId`
+2. Portal calls `sendScenarioEmail` Cloud Function with `attemptId`
+3. Cloud Function sends email via Gmail API
+4. Portal shows: "Check your email and reply to the message" + **"Resend Email" button** (recalls Cloud Function)
+5. Student replies
+6. pebservice receives email → queries Firestore for pending scenario
+7. Loads scenario, grades, updates Firestore with results
 
-**Flow for REPLY scenarios:**
-1. Portal calls `sendScenarioEmail` → creates Firestore doc with `{ email, scenarioId, status: "pending" }`
-2. Bot sends email (no special tokens needed)
-3. Student replies
-4. pebservice receives email → queries Firestore: "What pending scenario does this email have?"
-5. Loads that scenario, grades, updates Firestore
+**Flow for INITIATE scenarios (student sends first) - Current implementation:**
+1. User clicks "Start" → Portal writes to Firestore: `{ scenarioId, status: "pending" }` + updates `activeScenarioId`
+2. Portal shows instructions: "Send email to pathwayemailbot@gmail.com with: [task description]"
+3. Student composes fresh email in their email client
+4. pebservice receives email → queries Firestore for pending scenario
+5. Grades email, sends feedback reply, updates Firestore
 
-**Flow for STUDENT-INITIATES scenarios:**
-1. Portal shows scenario instructions on screen (e.g., "Write an email requesting time off")
-2. Portal calls `startScenario` → creates Firestore doc with `{ email, scenarioId, status: "awaiting_student_email" }`
-3. Student composes fresh email to `pathwayemailbot@gmail.com`
-4. pebservice receives email → queries Firestore: "What active scenario does this email have?"
-5. Grades the cold email, sends feedback reply
+**Key insight**: Portal owns Firestore state for both types. Cloud Function is just an email-sending utility (idempotent, retriable).
 
 **Firestore query in main.py:**
 ```python
@@ -161,7 +162,7 @@ def get_active_scenario(email: str) -> tuple[str, str] | None:
     """Returns (scenario_id, attempt_id) or None if no active scenario"""
     attempts = db.collection('users').document(email) \
         .collection('attempts') \
-        .where('status', 'in', ['pending', 'awaiting_student_email']) \
+        .where('status', '==', 'pending') \  # Single status for both types
         .order_by('startedAt', direction='DESCENDING') \
         .limit(1) \
         .get()
@@ -173,10 +174,13 @@ def get_active_scenario(email: str) -> tuple[str, str] | None:
 ```
 
 **Benefits:**
-- ✅ Works for both reply and initiate scenarios
+- ✅ Works for both REPLY and INITIATE scenarios
 - ✅ No ugly tokens in emails
-- ✅ Single source of truth
-- ✅ Portal always knows scenario state
+- ✅ Single source of truth in Firestore
+- ✅ Portal always knows scenario state via real-time listeners
+- ✅ Portal owns state management, Cloud Function is just email utility
+- ✅ "Resend Email" button can retry without affecting Firestore state
+- ✅ Portal has direct Firestore access via Firebase Auth
 
 **Error handling for unknown emails:**
 ```python
@@ -222,13 +226,18 @@ def update_attempt_graded(email: str, attempt_id: str, score: int, max_score: in
 
 ```
 users/{email}/
-  ├── activeScenarioId: string | null      # Only ONE scenario active at a time
-  ├── activeAttemptId: string | null
-  └── attempts/{attemptId}/
-        ├── scenarioId: string
-        ├── status: "active" | "graded" | "abandoned"
+  ├── activeScenarioIpending" | "graded" | "abandoned"
         ├── startedAt: timestamp
         ├── score: number (after grading)
+        ├── maxScore: number
+        ├── feedback: string
+        ├── gradedAt: timestamp
+```
+
+**Status values:**
+- `"pending"` - Scenario active, waiting for student email (both INITIATE and REPLY types)
+- `"graded"` - Email received and graded, score/feedback available
+- `"abandoned"` - User started different scenario before completing this one     ├── score: number (after grading)
         ├── maxScore: number
         ├── feedback: string
         ├── gradedAt: timestamp
