@@ -20,5 +20,7 @@ temp_restore/
 # Portal build artifacts
 portal/node_modules/
 portal/dist/
-portal/public/scenarios/  # Auto-generated from service/email_agent/scenarios/
+
+# Auto-generated scenarios (copied from service/email_agent/scenarios/)
+portal/public/scenarios/
 
