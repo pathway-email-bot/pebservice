@@ -113,9 +113,16 @@ def process_email(cloud_event):
 def process_single_message(service, msg):
     """Parses email content and decides on action."""
     try:
+        from .firestore_client import get_active_scenario, update_attempt_graded
+        
         headers = msg.get('payload', {}).get('headers', [])
         subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "No Subject")
         sender = next((h['value'] for h in headers if h['name'] == 'From'), "Unknown")
+        
+        # Extract sender email from "Name <email@example.com>" format
+        sender_email = sender
+        if '<' in sender and '>' in sender:
+            sender_email = sender.split('<')[1].split('>')[0].strip()
         
         # Extract Body (Text/Plain)
         body = "No Body"
@@ -141,9 +148,29 @@ def process_single_message(service, msg):
              logger.info(f"Skipping auto-reply for likely bot/self: {sender}")
              return
 
-        # Initialize Agent
+        # Get active scenario from Firestore
+        active_scenario = get_active_scenario(sender_email)
+        
+        if not active_scenario:
+            logger.warning(f"Email from {sender_email} with no active scenario")
+            logger.info(f"Subject: {subject}")
+            logger.info(f"Body preview: {body[:500]}")
+            
+            # Send redirect response
+            redirect_message = (
+                "Thanks for your email! To practice email scenarios, please visit the student portal "
+                "and click 'Start' on a scenario first. Then reply to the scenario email you receive.\n\n"
+                "Portal: https://pathway-email-bot.github.io/pebservice/"
+            )
+            send_reply(service, msg, redirect_message)
+            return
+        
+        scenario_id, attempt_id = active_scenario
+        logger.info(f"Found active scenario: {scenario_id} (attempt: {attempt_id})")
+        
+        # Load scenario and rubric
         logger.info("Loading Scenario and Rubric...")
-        scenario = load_scenario(DEFAULT_SCENARIO_PATH)
+        scenario = load_scenario(scenario_id)
         rubric = load_rubric(DEFAULT_RUBRIC_PATH)
         
         api_key = os.environ.get("OPENAI_API_KEY")
@@ -177,6 +204,17 @@ def process_single_message(service, msg):
         )
         
         logger.info(f"Agent finished. Reply generated: {bool(result.counterpart_reply)}")
+
+        # Update Firestore with grading results
+        if result.grading:
+            update_attempt_graded(
+                email=sender_email,
+                attempt_id=attempt_id,
+                score=result.grading.total_score,
+                max_score=result.grading.max_total_score,
+                feedback=result.grading.overall_comment
+            )
+            logger.info(f"Updated Firestore: score={result.grading.total_score}/{result.grading.max_total_score}")
 
         # Send reply
         if result.counterpart_reply:
