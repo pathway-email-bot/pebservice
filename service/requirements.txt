@@ -2,6 +2,7 @@ functions-framework==3.*
 google-cloud-pubsub==2.*
 google-cloud-logging==3.*
 google-cloud-firestore==2.*
+google-cloud-secret-manager==2.*
 firebase-admin==6.*
 google-auth==2.*
 google-auth-oauthlib==1.*
@@ -11,3 +12,4 @@ langchain-core
 langchain-openai
 openai
 PyYAML
+requests

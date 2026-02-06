@@ -33,6 +33,7 @@ import functions_framework
 from flask import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from google.cloud import secretmanager
 import firebase_admin
 from firebase_admin import auth as firebase_auth
 
@@ -207,7 +208,25 @@ def process_single_message(service, msg):
         scenario = load_scenario(scenario_id)
         rubric = load_rubric(DEFAULT_RUBRIC_PATH)
         
-        api_key = os.environ.get("OPENAI_API_KEY")
+        # Fetch OpenAI API key from Secret Manager
+        try:
+            project_id = os.environ.get('GCP_PROJECT') or os.environ.get('GOOGLE_CLOUD_PROJECT')
+            if not project_id:
+                import requests
+                metadata_server = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
+                headers = {"Metadata-Flavor": "Google"}
+                project_id = requests.get(metadata_server, headers=headers).text
+            
+            from google.cloud import secretmanager
+            client = secretmanager.SecretManagerServiceClient()
+            name = f"projects/{project_id}/secrets/openai-api-key/versions/latest"
+            response = client.access_secret_version(request={"name": name})
+            api_key = response.payload.data.decode('UTF-8')
+            logger.info("Successfully fetched OpenAI API key from Secret Manager using IAM")
+        except Exception as e:
+            logger.error(f"Failed to fetch OpenAI API key from Secret Manager: {e}")
+            api_key = os.environ.get("OPENAI_API_KEY")  # Fallback to env var
+        
         if not api_key:
             logger.error("Missing OPENAI_API_KEY")
             return
@@ -303,18 +322,35 @@ def send_reply(service, original_msg, reply_text):
         logger.error(f"Error sending reply: {e}", exc_info=True)
 
 def get_gmail_service():
-    """Builds Gmail service using OAuth credentials from environment variables."""
+    """Builds Gmail service using OAuth credentials fetched from Secret Manager via IAM."""
     try:
-        client_id = os.environ.get('GMAIL_CLIENT_ID')
-        client_secret = os.environ.get('GMAIL_CLIENT_SECRET')
-        refresh_token = os.environ.get('GMAIL_REFRESH_TOKEN')
+        # Get project ID from environment or metadata
+        project_id = os.environ.get('GCP_PROJECT') or os.environ.get('GOOGLE_CLOUD_PROJECT')
+        if not project_id:
+            # Fallback: get from metadata service
+            import requests
+            metadata_server = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
+            headers = {"Metadata-Flavor": "Google"}
+            project_id = requests.get(metadata_server, headers=headers).text
         
-        if not all([client_id, client_secret, refresh_token]):
-            logger.error("Missing GMAIL OAuth environment variables.")
-            return None
-
+        # Initialize Secret Manager client (uses service account IAM automatically)
+        client = secretmanager.SecretManagerServiceClient()
+        
+        # Fetch OAuth credentials from Secret Manager
+        def get_secret(secret_id):
+            name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+            response = client.access_secret_version(request={"name": name})
+            return response.payload.data.decode('UTF-8')
+        
+        client_id = get_secret('gmail-client-id')
+        client_secret = get_secret('gmail-client-secret')
+        refresh_token = get_secret('gmail-refresh-token-bot')
+        
+        logger.info("Successfully fetched Gmail OAuth credentials from Secret Manager using IAM")
+        
+        # Build OAuth credentials
         creds = Credentials(
-            None, # No access token initially
+            None,  # No access token initially
             refresh_token=refresh_token,
             token_uri="https://oauth2.googleapis.com/token",
             client_id=client_id,
