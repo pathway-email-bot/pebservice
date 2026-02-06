@@ -2,18 +2,42 @@
 
 Enable students to: log in → select a scenario → receive scenario email → respond → get AI feedback/score → view results.
 
+## ✅ Completed: Planning & Infrastructure
+
+**Monorepo Setup** (2026-02-06):
+- ✅ Merged `student-portal` into `pebservice/portal/`
+- ✅ Renamed `src/` → `service/`
+- ✅ Created separate GitHub Actions workflows for service and portal
+- ✅ Deployed portal to GitHub Pages: https://pathway-email-bot.github.io/pebservice/
+- ✅ Made repo public (free GitHub Pages)
+
+**All Open Issues Resolved**:
+- ✅ Issue 1: Firebase ID token authentication
+- ✅ Issue 2: Build-time scenario bundling
+- ✅ Issue 3: Firestore security rules defined
+- ✅ Issue 4: Deployment URL confirmed
+- ✅ Issue 5: Local testing strategy defined
+
+**Ready for Implementation**: All infrastructure decisions made, ready to build the end-to-end flow.
+
+---
+
 ## Current State
 
 | Component | Status |
 |-----------|--------|
+| Monorepo structure | ✅ Complete |
+| Portal deployment | ✅ Live at GitHub Pages |
 | Firebase Auth (magic link) | ✅ Working |
 | Scenarios page UI | ⚠️ Hardcoded 6 scenarios |
 | pebservice email processing | ✅ Working (hardcoded scenario) |
-| 11 scenario JSONs | ✅ Exist in `pebservice/src/email_agent/scenarios/` |
+| 11 scenario JSONs | ✅ Exist in `service/email_agent/scenarios/` |
 | Firestore integration | ❌ Not connected |
 | Scenario triggering from portal | ❌ Not implemented |
 
 ---
+
+## Next: Implementation Tasks
 
 ## Proposed Changes
 
