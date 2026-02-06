@@ -1,5 +1,5 @@
 {
-  "name": "reschedule_internal_meeting_conflict",
+  "name": "Reschedule Internal Meeting",
   "description": "Remote administrative assistant has a scheduling conflict and needs to reschedule an internal meeting in a professional way.",
   "environment": "remote_workplace",
   "counterpart_role": "Department manager",

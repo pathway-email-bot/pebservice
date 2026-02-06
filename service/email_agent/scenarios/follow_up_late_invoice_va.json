@@ -1,5 +1,5 @@
 {
-  "name": "follow_up_late_invoice_va",
+  "name": "Follow Up on Late Invoice",
   "description": "Freelance virtual assistant has sent an invoice that is now late and needs to follow up politely and professionally.",
   "environment": "freelance_client",
   "counterpart_role": "Small business owner client",

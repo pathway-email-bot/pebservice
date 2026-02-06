@@ -1,5 +1,5 @@
 {
-  "name": "respond_to_customer_complaint_support",
+  "name": "Respond to Customer Complaint",
   "description": "Remote customer support assistant needs to respond to a polite customer complaint about a delayed reply or small mistake.",
   "environment": "customer_support",
   "counterpart_role": "Customer of a small online business",

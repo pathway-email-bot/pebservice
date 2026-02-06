@@ -1,5 +1,5 @@
 {
-  "name": "correct_error_in_report",
+  "name": "Correct Error in Report",
   "description": "Remote data entry worker notices they sent a spreadsheet with a small mistake and needs to send a correction email.",
   "environment": "remote_workplace",
   "counterpart_role": "Operations supervisor",

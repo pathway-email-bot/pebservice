@@ -1,5 +1,5 @@
 {
-  "name": "reschedule_client_call_internet_issue",
+  "name": "Reschedule Client Call",
   "description": "Remote virtual assistant has an unstable internet connection before a scheduled client call and needs to reschedule in a professional way.",
   "environment": "remote_workplace",
   "counterpart_role": "Small business owner client",

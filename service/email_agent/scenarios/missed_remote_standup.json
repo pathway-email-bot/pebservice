@@ -1,5 +1,5 @@
 {
-  "name": "missed_remote_standup",
+  "name": "Missed Remote Standup",
   "description": "Junior remote employee missed the daily standup due to an unexpected power and internet outage and needs to explain and give an update.",
   "environment": "remote_workplace",
   "counterpart_role": "US-based engineering manager",
