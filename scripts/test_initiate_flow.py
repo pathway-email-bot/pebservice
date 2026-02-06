@@ -238,7 +238,7 @@ def wait_for_grading(db: firestore.Client, attempt_id: str, timeout: int = 60) -
         elapsed = int(time.time() - start_time)
         if elapsed - last_log_check >= 10:
             print_info(f"\nChecking process_email logs...")
-            check_cloud_function_logs()
+            check_cloud_function_logs(attempt_id)
             last_log_check = elapsed
         
         # Progress indicator
@@ -248,31 +248,47 @@ def wait_for_grading(db: firestore.Client, attempt_id: str, timeout: int = 60) -
     print()
     print_error(f"Timeout after {timeout}s - no grading received")
     print_info("Checking logs one more time...")
-    check_cloud_function_logs()
+    check_cloud_function_logs(attempt_id)
     return False
 
 
-def check_cloud_function_logs():
+def check_cloud_function_logs(attempt_id: str = None):
     """Check recent process_email Cloud Function logs."""
     import subprocess
+    from datetime import datetime, timedelta, timezone
+    
     try:
+        # Get logs from last 10 seconds only to see current activity
+        time_filter = (datetime.now(timezone.utc) - timedelta(seconds=10)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        
         result = subprocess.run(
-            ['gcloud', 'functions', 'logs', 'read', 'process_email', 
-             '--gen2', '--region=us-central1', '--limit=10', '--format=value(log)'],
+            f'gcloud functions logs read process_email --gen2 --region=us-central1 --limit=30 --format=value(log) --filter="timestamp>=\\"{time_filter}\\""',
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
+            shell=True
         )
         
         if result.returncode == 0 and result.stdout.strip():
             logs = result.stdout.strip().split('\n')
+            
+            # If we have an attempt_id, look for it specifically
+            if attempt_id:
+                matching = [log for log in logs if attempt_id in log]
+                if matching:
+                    print_info(f"Logs for attempt {attempt_id[:8]}:")
+                    for log in matching[-5:]:
+                        print(f"    {log[:150]}")
+                    return
+            
             # Show recent relevant logs
             relevant = [log for log in logs[-10:] if any(keyword in log.lower() for keyword in 
-                       ['error', 'processing email', 'grading', TEST_EMAIL.lower(), 'exception'])]
+                       ['error', 'processing email', 'grading', 'updated firestore', 'score=',
+                        TEST_EMAIL.lower(), 'exception', 'found active scenario'])]
             if relevant:
                 print_info("Recent relevant logs:")
                 for log in relevant[-5:]:
-                    print(f"    {log[:120]}...")
+                    print(f"    {log[:150]}")
             else:
                 print_info("No relevant logs found in last 10 entries")
         else:

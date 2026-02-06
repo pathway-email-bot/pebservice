@@ -5,7 +5,27 @@ See [implementation_plan.md](./implementation_plan.md)
 
 ---
 
-## 📋 Priority 3: Email "FROM" Name Customization
+## � CRITICAL: Gmail Watch Management
+
+**Issue**: Gmail push notifications (watch) expire every 7 days and must be manually renewed
+
+**Current State**:
+- Watch set up manually via `scripts/check_watch.py`
+- Expires: 2026-02-13 15:30:28
+- No automation for renewal
+
+**Options**:
+1. Cloud Scheduler + Cloud Function to auto-renew weekly
+2. GitHub Actions cron job (requires stored bot credentials)
+3. Manual renewal reminder (least ideal)
+
+**Impact**: If watch expires, `process_email` function won't receive any notifications → emails won't be processed
+
+**Next Steps**: Decide on automation strategy and implement before 2026-02-13
+
+---
+
+## �📋 Priority 3: Email "FROM" Name Customization
 
 **Goal**: Make scenario emails appear from different people (e.g., "Bob Jones (Manager)")
 
