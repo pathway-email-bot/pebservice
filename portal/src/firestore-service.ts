@@ -2,7 +2,7 @@
  * Firestore service for managing user attempts and scenarios
  */
 import { db, auth } from './firebase-config';
-import { collection, doc, onSnapshot, Unsubscribe, query, where, orderBy, limit, setDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, where, orderBy, limit, setDoc, getDocs, updateDoc } from 'firebase/firestore';
 
 export interface Attempt {
     id: string;
@@ -53,7 +53,7 @@ export async function createAttempt(scenarioId: string): Promise<string> {
 /**
  * Listen to user's active scenario
  */
-export function listenToUserData(callback: (data: UserData | null) => void): Unsubscribe {
+export function listenToUserData(callback: (data: UserData | null) => void): () => void {
     const user = auth.currentUser;
     if (!user?.email) {
         throw new Error('User not authenticated');
@@ -73,7 +73,7 @@ export function listenToUserData(callback: (data: UserData | null) => void): Uns
 /**
  * Listen to all attempts for the current user
  */
-export function listenToAttempts(callback: (attempts: Attempt[]) => void): Unsubscribe {
+export function listenToAttempts(callback: (attempts: Attempt[]) => void): () => void {
     const user = auth.currentUser;
     if (!user?.email) {
         throw new Error('User not authenticated');
@@ -103,7 +103,7 @@ export function listenToAttempts(callback: (attempts: Attempt[]) => void): Unsub
 /**
  * Listen to the current active attempt (most recent pending/awaiting_student_email)
  */
-export function listenToActiveAttempt(callback: (attempt: Attempt | null) => void): Unsubscribe {
+export function listenToActiveAttempt(callback: (attempt: Attempt | null) => void): () => void {
     const user = auth.currentUser;
     if (!user?.email) {
         throw new Error('User not authenticated');
@@ -140,7 +140,7 @@ export function listenToActiveAttempt(callback: (attempt: Attempt | null) => voi
 /**
  * Listen to a specific attempt
  */
-export function listenToAttempt(attemptId: string, callback: (attempt: Attempt | null) => void): Unsubscribe {
+export function listenToAttempt(attemptId: string, callback: (attempt: Attempt | null) => void): () => void {
     const user = auth.currentUser;
     if (!user?.email) {
         throw new Error('User not authenticated');

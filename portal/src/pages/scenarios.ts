@@ -31,7 +31,12 @@ export async function renderScenariosPage(container: HTMLElement): Promise<void>
     const currentUser = getCurrentUser();
 
     if (currentUser) {
-        await renderAuthenticatedView(container, currentUser);
+        try {
+            await renderAuthenticatedView(container, currentUser);
+        } catch (error) {
+            console.error('Error rendering authenticated view:', error);
+            container.innerHTML = `<div class="message message-error">Error loading scenarios: ${error}</div>`;
+        }
     } else {
         renderUnauthenticatedView(container);
     }
@@ -39,7 +44,9 @@ export async function renderScenariosPage(container: HTMLElement): Promise<void>
     // Listen for auth changes
     onAuthChange((user) => {
         if (user) {
-            renderAuthenticatedView(container, user);
+            renderAuthenticatedView(container, user).catch(err => {
+                console.error('Error in auth change handler:', err);
+            });
         } else {
             renderUnauthenticatedView(container);
         }
@@ -48,7 +55,26 @@ export async function renderScenariosPage(container: HTMLElement): Promise<void>
 
 async function renderAuthenticatedView(container: HTMLElement, user: User): Promise<void> {
     // Load scenarios from bundled files
-    currentScenarios = await listScenarios();
+    try {
+        currentScenarios = await listScenarios();
+        
+        if (!currentScenarios || currentScenarios.length === 0) {
+            container.innerHTML = `
+                <div class="scenarios-page">
+                    <div class="message message-warning">No scenarios found. Please check the build configuration.</div>
+                </div>
+            `;
+            return;
+        }
+    } catch (error) {
+        console.error('Error loading scenarios:', error);
+        container.innerHTML = `
+            <div class="scenarios-page">
+                <div class="message message-error">Failed to load scenarios: ${error}</div>
+            </div>
+        `;
+        return;
+    }
     
     container.innerHTML = `
     <div class="scenarios-page">

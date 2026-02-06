@@ -321,6 +321,12 @@ form .btn-primary {
 
 .scenarios-container .subtitle {
   color: var(--color-text-muted);
+  margin-bottom: var(--spacing-md);
+}
+
+.scenarios-container .instruction {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
   margin-bottom: var(--spacing-xl);
 }
 
@@ -331,10 +337,6 @@ form .btn-primary {
 }
 
 .scenario-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--spacing-md);
   padding: var(--spacing-lg);
   background: var(--color-bg-card);
   border-radius: var(--radius-md);
@@ -345,31 +347,152 @@ form .btn-primary {
 
 .scenario-card:hover {
   box-shadow: var(--shadow-md);
+}
+
+.scenario-card.active {
   border-color: var(--color-primary);
+  border-width: 2px;
+  box-shadow: var(--shadow-lg);
+}
+
+.scenario-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
 }
 
 .scenario-info {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
   flex: 1;
   min-width: 0;
 }
 
-.scenario-number {
-  font-weight: 600;
-  color: var(--color-primary);
-  min-width: 2rem;
-}
-
 .scenario-title {
   color: var(--color-text);
+  margin-bottom: var(--spacing-sm);
+  font-size: 1.1rem;
+}
+
+.scenario-description {
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.95rem;
+}
+
+.scenario-role {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 0;
 }
 
 .start-btn {
   flex-shrink: 0;
   width: auto;
   padding: var(--spacing-sm) var(--spacing-lg);
+}
+
+/* Drawer UI */
+.scenario-drawer {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 2px solid var(--color-border);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.task-section,
+.instructions-section,
+.status-section,
+.grading-results {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-primary);
+}
+
+.task-section h4,
+.instructions-section h4,
+.grading-results h4 {
+  color: var(--color-primary-dark);
+  font-size: 1rem;
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.instructions-section code {
+  background: var(--color-bg-card);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  color: var(--color-primary-dark);
+  border: 1px solid var(--color-border);
+}
+
+.resend-btn {
+  margin-top: var(--spacing-md);
+}
+
+.status-section {
+  border-left-color: var(--color-warning);
+}
+
+.pending-status {
+  color: var(--color-warning);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: 0;
+}
+
+.grading-results {
+  border-left-color: var(--color-success);
+  background: #E8F5E9;
+}
+
+.grading-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.grading-header h4 {
+  margin-bottom: 0;
+}
+
+.score {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-success);
+}
+
+.feedback {
+  margin-bottom: var(--spacing-md);
+}
+
+.feedback strong {
+  color: var(--color-text);
+}
+
+.graded-time {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-style: italic;
 }
 
 /* ===== Badges ===== */
