@@ -1,6 +1,24 @@
-# Pathway Email Bot Service (PEB Service)
+# Pathway Email Bot (PEB) - Monorepo
 
-This service is designed to help students practice their emailing skills by providing automated, AI-generated responses to their emails. 
+This repository contains both the email grading service and the student portal for practicing professional email skills.
+
+## 📁 Repository Structure
+
+```
+pebservice/
+├── service/          # Cloud Function for email processing & grading
+│   ├── main.py
+│   └── email_agent/  # AI grading logic (from tjkerby/email_agent)
+├── portal/           # Student-facing web portal
+│   ├── src/
+│   └── package.json
+└── design_docs/      # Planning and documentation
+```
+
+## 🚀 Deployments
+
+- **Service**: Deployed to Google Cloud Functions via `.github/workflows/deploy-service.yaml`
+- **Portal**: Deployed to GitHub Pages at `https://pathway-email-bot.github.io/pebservice/`
 
 ## 🤖 Instructions for Antigravity AI
 
@@ -11,7 +29,7 @@ You are the primary operator and consumer of this repository. Follow these guide
 - **Secrets Management**: All sensitive information (API keys, service account JSON, etc.) **must** be stored as **GitHub Secrets**. Use `gh secret set` to manage them.
 - **Infrastructure Management**: Use the **Google Cloud CLI (`gcloud`)** or the Google Cloud Console for managing GCP resources.
 - **Maintenance (CRITICAL)**: **You must update the resource table in `service_notes.md`** whenever a new cloud service or significant resource is added to the project.
-- **Deployment**: CI/CD is handled via **GitHub Actions**. Ensure workflows are optimized and follow security best practices.
+- **Deployment**: CI/CD is handled via **GitHub Actions**. Workflows have path filters to deploy only changed components.
 - **Accounts**: There is the owner of the cloud account and then there are the emails that are registered with the service and will be monitored. When asking for credentials, make sure to specify which account you are asking for credentials for. michaeltreynolds@gmail.com is the owner and pathwayemailbot@gmail.com is the email that will grant the refresh token for use with the email service.
 
 ### Core Architecture
