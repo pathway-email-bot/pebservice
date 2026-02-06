@@ -76,13 +76,13 @@ We have **3 separate deployments**:
 | `gmail-client-id` | OAuth client ID | 2026-02-06 via sync_secrets.py |
 | `gmail-client-secret` | OAuth client secret | 2026-02-06 via sync_secrets.py |
 | `gmail-refresh-token-bot` | Refresh token | 2026-02-06 via get_token.py |
-| `openai_api_key` | OpenAI API key | 2026-02-06 |
+| `openai-api-key` | OpenAI API key | 2026-02-06 |
 
 ### Current Deployment YAML Strategy
 
 ```yaml
 # All runtime secrets: Using GCP Secret Manager (✅ Best practice)
---set-secrets="GMAIL_CLIENT_ID=gmail-client-id:latest,GMAIL_CLIENT_SECRET=gmail-client-secret:latest,GMAIL_REFRESH_TOKEN=gmail-refresh-token-bot:latest,OPENAI_API_KEY=openai_api_key:latest"
+--set-secrets="GMAIL_CLIENT_ID=gmail-client-id:latest,GMAIL_CLIENT_SECRET=gmail-client-secret:latest,GMAIL_REFRESH_TOKEN=gmail-refresh-token-bot:latest,OPENAI_API_KEY=openai-api-key:latest"
 ```
 
 **Benefits:**

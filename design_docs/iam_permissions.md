@@ -38,7 +38,7 @@ gcloud secrets add-iam-policy-binding gmail-refresh-token-bot \
   --role="roles/secretmanager.secretAccessor"
 
 # OpenAI API Key
-gcloud secrets add-iam-policy-binding openai_api_key \
+gcloud secrets add-iam-policy-binding openai-api-key \
   --member="serviceAccount:687061619628-compute@developer.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 ```
@@ -91,8 +91,8 @@ For `process_email` function to receive email notifications:
 | `gmail-client-id` | OAuth 2.0 Client ID | Both functions |
 | `gmail-client-secret` | OAuth 2.0 Client Secret | Both functions |
 | `gmail-refresh-token-bot` | Refresh token for pathwayemailbot@gmail.com | Both functions |
-| `openai_api_key` | OpenAI API key for grading | process_email function |
-- `OPENAI_API_KEY` → `openai_api_key:latest`
+| `openai-api-key` | OpenAI API key for grading | process_email function |
+- `OPENAI_API_KEY` → `openai-api-key:latest`
 
 ## Deployment Commands
 
