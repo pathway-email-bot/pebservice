@@ -163,7 +163,7 @@ if not active_scenario:
     send_reply(service, msg, 
         "Thanks for your email! To practice email scenarios, please visit the student portal "
         "and click 'Start' on a scenario first. Then reply to the scenario email you receive.\n\n"
-        "Portal: https://[student-portal-url]")
+        "Portal: https://pathway-email-bot.github.io/pebservice/")
     return
 ```
 
@@ -332,36 +332,23 @@ service cloud.firestore {
 
 ### Issue 4: Portal Deployment URL
 
-**Question**: Where is the student portal hosted, and what URL goes in error emails?
+**Decision**: ✅ **GitHub Pages (Option A)**
 
-**Options**:
-- **A) GitHub Pages** - Free, simple. URL: `username.github.io/student-portal`
-- **B) Firebase Hosting** - Same project as Firestore. URL: `pathway-email-bot-6543.web.app`
-- **C) Other** - Vercel, Netlify, etc.
-
-**Considerations**:
-- Firebase Hosting keeps everything in one project
-- GitHub Pages is already familiar
-
-**Decision**: _TBD_
+After monorepo migration:
+- **URL**: `https://pathway-email-bot.github.io/pebservice/`
+- **Deployment**: Via `.github/workflows/deploy-portal.yaml`
+- **CORS allowed origin**: `https://pathway-email-bot.github.io`
 
 ---
 
 ### Issue 5: Local Testing Strategy
 
-**Question**: How do we test the full flow locally before deploying?
+**Decision**: ✅ **Firestore emulator + manual email testing**
 
-**Options**:
-- **A) Firestore emulator** - Use `firebase emulators:start`, test portal against local Firestore
-- **B) Dev Firestore instance** - Use production Firestore but with test data
-- **C) Mocks** - Mock Firestore calls in portal, test UI only
+**Local development workflow**:
+1. `cd portal && npm run dev` - Run portal locally
+2. `firebase emulators:start --only firestore` - Run Firestore emulator
+3. Portal connects to emulator for testing UI/data flow
+4. Email flow requires deployed pebservice (test manually)
 
-**Considerations**:
-- Email sending/receiving can't be fully emulated locally
-- Can test portal + Firestore locally, but grading requires deployed pebservice
-
-**Recommended approach**:
-1. Use Firestore emulator for portal development
-2. Manually test email flow against deployed pebservice
-
-**Decision**: _TBD_
+**Note**: Full end-to-end testing requires deployment since email sending/receiving can't be emulated.
