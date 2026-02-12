@@ -148,14 +148,19 @@ def process_email(cloud_event):
 
     return "OK"
 
+def get_header(headers, name, default=""):
+    """Case-insensitive header lookup."""
+    name_lower = name.lower()
+    return next((h['value'] for h in headers if h['name'].lower() == name_lower), default)
+
 def process_single_message(service, msg):
     """Parses email content and decides on action."""
     try:
         from .firestore_client import get_active_scenario, update_attempt_graded
         
         headers = msg.get('payload', {}).get('headers', [])
-        subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "No Subject")
-        sender = next((h['value'] for h in headers if h['name'] == 'From'), "Unknown")
+        subject = get_header(headers, 'Subject', 'No Subject')
+        sender = get_header(headers, 'From', 'Unknown')
         
         # Extract sender email from "Name <email@example.com>" format
         sender_email = sender
@@ -294,12 +299,12 @@ def send_reply(service, original_msg, reply_text):
     try:
         thread_id = original_msg['threadId']
         headers = original_msg['payload']['headers']
-        subject = next(h['value'] for h in headers if h['name'] == 'Subject')
+        subject = get_header(headers, 'Subject', 'No Subject')
         
-        sender_email = next((h['value'] for h in headers if h['name'] == 'From'), "")
+        sender_email = get_header(headers, 'From', '')
         
         # Get the Message-ID from the original email for proper threading
-        message_id = next((h['value'] for h in headers if h['name'].lower() == 'message-id'), None)
+        message_id = get_header(headers, 'Message-ID') or None
         
         logger.info(f"Constructing reply message for thread: {thread_id}")
 
