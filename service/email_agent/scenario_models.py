@@ -21,10 +21,13 @@ class Scenario:
     # Scenario-specific grading hints
     grading_focus: str = ""       # was grading_instructions
 
+    # Type of interaction
+    interaction_type: str = "initiate"  # e.g. "initiate" or "respond"
+
     # Starter email
     starter_sender_name: str = "Jordan Smith (Manager)"
     starter_subject: str = "Regarding your work today"
     starter_email_body: Optional[str] = None
     starter_email_generation_hint: str = (
-        "Write a realistic starter email for the situation, 1–3 short paragraphs."
+        "Write a realistic starter email for the situation, 1-3 short paragraphs."
     )

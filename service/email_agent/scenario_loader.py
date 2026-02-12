@@ -9,6 +9,8 @@ import yaml
 print("DEBUG: Importing Scenario from scenario_models")
 from .scenario_models import Scenario
 
+SCENARIOS_DIR = Path(__file__).parent / "scenarios"
+
 
 def _load_raw(path: Path) -> Dict[str, Any]:
     if not path.exists():
@@ -22,5 +24,16 @@ def _load_raw(path: Path) -> Dict[str, Any]:
 
 def load_scenario(path: str | Path) -> Scenario:
     path = Path(path)
+    # If no extension or not an absolute path, resolve relative to scenarios dir
+    if not path.is_absolute() and not path.suffix:
+        # Try .json first, then .yaml
+        for ext in ['.json', '.yaml', '.yml']:
+            candidate = SCENARIOS_DIR / f"{path}{ext}"
+            if candidate.exists():
+                path = candidate
+                break
+        else:
+            # Fall back to original for error message
+            path = SCENARIOS_DIR / path
     raw = _load_raw(path)
     return Scenario(**raw)

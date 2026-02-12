@@ -12,4 +12,3 @@ langchain-core
 langchain-openai
 openai
 PyYAML
-requests
