@@ -51,7 +51,8 @@ jobs:
             --runtime=python311 \
             --source=service \
             --entry-point=process_email \
-            --trigger-topic=${{ env.TOPIC_NAME }}
+            --trigger-topic=${{ env.TOPIC_NAME }} \
+            --memory=512Mi
 
       - name: Deploy send_scenario_email to Cloud Functions (Gen 2)
         run: |

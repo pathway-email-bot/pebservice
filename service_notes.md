@@ -10,7 +10,7 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 |:---|:---|:---|
 | **Pub/Sub Topic** | `email-notifications` | Receives Gmail push notifications |
 | **Pub/Sub Subscription** | `eventarc-us-central1-process-email-479061-sub-493` | Eventarc-managed, triggers Cloud Function |
-| **Cloud Function** | `process_email` | Core AI logic and email handler |
+| **Cloud Function** | `process_email` | Core AI logic and email handler (**512Mi memory required**) |
 | **Cloud Function** | `send_scenario_email` | HTTP endpoint for sending scenario starter emails |
 | **Firestore Database** | `pathway` | Stores user attempts, active scenarios, and grading results |
 | **Service Account** | `687061619628-compute@developer.gserviceaccount.com` | Default Compute SA used by functions |
@@ -35,7 +35,8 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 
 ```
 users/{email}/
-  ├── activeScenario: {scenarioId, attemptId, startedAt}
+  ├── activeScenarioId: string          # currently active scenario
+  ├── activeAttemptId: string           # currently active attempt
   └── attempts/{attemptId}/
       ├── scenarioId: string
       ├── status: "pending" | "awaiting_student_email" | "graded"
@@ -137,7 +138,15 @@ Use `setup_infra.ps1` to create the project, enable APIs, and configure the serv
 - Deployment workflows should use the `google-github-actions/auth` for secure authentication.
 - Monitor workflow runs via `gh run list`.
 
-## Local Development
+## Deployment
+
+```powershell
+# Deploy process_email (must include --memory=512Mi)
+Copy-Item requirements.txt service/
+gcloud functions deploy process_email --gen2 --region=us-central1 --runtime=python311 --source=service --entry-point=process_email --trigger-topic=email-notifications --memory=512Mi --project=pathway-email-bot-6543
+```
+
+> **Note**: Default memory (256Mi) causes OOM — the OpenAI SDK + Gmail API + Firebase Admin + Secret Manager require ~300-400 MiB at runtime.
 
 ## Local Development
 
