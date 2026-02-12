@@ -71,10 +71,11 @@ def process_email(cloud_event):
     # 1. Decode the Pub/Sub message
     data = cloud_event.data
     pubsub_message = data.get("message", {})
+    logger.info(f"Pub/Sub message keys: {list(pubsub_message.keys())}")
     
     if "data" in pubsub_message:
         message_data = base64.b64decode(pubsub_message["data"]).decode("utf-8")
-        logger.debug(f"Received message data: {message_data}")
+        logger.info(f"Decoded Pub/Sub data: {message_data}")
         
         try:
             notification = json.loads(message_data)
@@ -88,10 +89,12 @@ def process_email(cloud_event):
             logger.info(f"Processing notification for {email_address}, historyId: {history_id}")
             
             # 2. Initialize Gmail Service
+            logger.info("Initializing Gmail service...")
             service = get_gmail_service()
             if not service:
                 logger.error("Failed to initialize Gmail service")
                 return "OK"
+            logger.info("Gmail service initialized successfully")
 
             # 3. List history to find the message ID
             try:
@@ -175,8 +178,8 @@ def process_single_message(service, msg):
                         body = base64.urlsafe_b64decode(data).decode('utf-8')
                         break
         
-        logger.info(f"Processing Email - From: {sender} | Subject: {subject}")
-        # logger.info(f"Body snippet: {body[:100]}...") # Optional: log body snippet
+        logger.info(f"Processing Email - From: {sender} ({sender_email}) | Subject: {subject}")
+        logger.info(f"Body preview: {body[:200]}")
         
         # Guard: Don't reply to self or bots to avoid loops
         if "google" in sender.lower() or "bot" in sender.lower() or "noreply" in sender.lower():
@@ -184,12 +187,12 @@ def process_single_message(service, msg):
              return
 
         # Get active scenario from Firestore
+        logger.info(f"Looking up active scenario for: {sender_email}")
         active_scenario = get_active_scenario(sender_email)
         
         if not active_scenario:
-            logger.warning(f"Email from {sender_email} with no active scenario")
+            logger.warning(f"No active scenario found for {sender_email}")
             logger.info(f"Subject: {subject}")
-            logger.info(f"Body preview: {body[:500]}")
             
             # Send redirect response
             redirect_message = (

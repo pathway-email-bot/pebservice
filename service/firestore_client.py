@@ -44,7 +44,8 @@ def create_attempt(email: str, scenario_id: str) -> str:
 def get_active_scenario(email: str) -> Optional[tuple[str, str]]:
     """
     Get the active scenario for a user.
-    Queries for both 'pending' and 'awaiting_student_email' statuses.
+    Reads activeScenarioId and activeAttemptId from the user document
+    (set by create_attempt).
     
     Args:
         email: User's email address
@@ -54,17 +55,18 @@ def get_active_scenario(email: str) -> Optional[tuple[str, str]]:
     """
     db = get_firestore_client()
     
-    # Query for active attempts (pending or awaiting)
-    attempts = db.collection('users').document(email) \
-        .collection('attempts') \
-        .where('status', 'in', ['pending', 'awaiting_student_email']) \
-        .order_by('startedAt', direction=firestore.Query.DESCENDING) \
-        .limit(1) \
-        .get()
+    user_ref = db.collection('users').document(email)
+    user_doc = user_ref.get()
     
-    if attempts:
-        doc = list(attempts)[0]
-        return (doc.get('scenarioId'), doc.id)
+    if not user_doc.exists:
+        return None
+    
+    data = user_doc.to_dict()
+    scenario_id = data.get('activeScenarioId')
+    attempt_id = data.get('activeAttemptId')
+    
+    if scenario_id and attempt_id:
+        return (scenario_id, attempt_id)
     return None
 
 def update_attempt_graded(email: str, attempt_id: str, score: int, max_score: int, feedback: str):
