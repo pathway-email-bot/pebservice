@@ -13,6 +13,15 @@ from langchain_openai import ChatOpenAI
 from .scenario_models import Scenario
 from .rubric import GLOBAL_RUBRIC, RubricItem
 
+try:
+    from ..logging_utils import log_function
+except (ImportError, ValueError):
+    # Fallback: when email_agent is imported as a top-level package (e.g. local test scripts)
+    import functools
+    def log_function(func):
+        """No-op fallback when logging_utils is not available."""
+        return func
+
 
 # ----------------- Data models -----------------
 
@@ -279,6 +288,7 @@ class EmailAgent:
 
     # ---------- Starter email generation ----------
 
+    @log_function
     def build_starter_thread(self) -> List[EmailMessage]:
         """Create the initial thread (first email from counterpart)."""
         s = self.scenario
@@ -309,6 +319,7 @@ class EmailAgent:
 
     # ---------- Counterpart reply ----------
 
+    @log_function
     def reply_as_counterpart(
         self,
         thread: Sequence[EmailMessage],
@@ -327,6 +338,7 @@ class EmailAgent:
 
     # ---------- Grading ----------
 
+    @log_function
     def grade_student_email(
         self,
         thread: Sequence[EmailMessage],
@@ -417,6 +429,7 @@ class EmailAgent:
 
     # ---------- High-level operation ----------
 
+    @log_function
     def evaluate_and_respond(
         self,
         *,

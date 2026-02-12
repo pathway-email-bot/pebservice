@@ -40,6 +40,7 @@ from firebase_admin import auth as firebase_auth
 from .email_agent.scenario_loader import load_scenario
 from .email_agent.rubric_loader import load_rubric
 from .email_agent.email_agent import EmailAgent, EmailMessage
+from .logging_utils import log_function
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
@@ -61,21 +62,21 @@ DEFAULT_RUBRIC_PATH = BASE_DIR / "email_agent/rubrics/default.json"
 logger.info("PEB Service module loaded. Logging is operational.")
 
 @functions_framework.cloud_event
+@log_function
 def process_email(cloud_event):
     """
     Triggered from a message on a Cloud Pub/Sub topic.
     The message usually comes from Gmail push notifications.
     """
-    logger.info("process_email triggered by Pub/Sub event")
     
     # 1. Decode the Pub/Sub message
     data = cloud_event.data
     pubsub_message = data.get("message", {})
-    logger.info(f"Pub/Sub message keys: {list(pubsub_message.keys())}")
+
     
     if "data" in pubsub_message:
         message_data = base64.b64decode(pubsub_message["data"]).decode("utf-8")
-        logger.info(f"Decoded Pub/Sub data: {message_data}")
+
         
         try:
             notification = json.loads(message_data)
@@ -89,12 +90,10 @@ def process_email(cloud_event):
             logger.info(f"Processing notification for {email_address}, historyId: {history_id}")
             
             # 2. Initialize Gmail Service
-            logger.info("Initializing Gmail service...")
             service = get_gmail_service()
             if not service:
                 logger.error("Failed to initialize Gmail service")
                 return "OK"
-            logger.info("Gmail service initialized successfully")
 
             # 3. List history to find the message ID
             try:
@@ -153,6 +152,7 @@ def get_header(headers, name, default=""):
     name_lower = name.lower()
     return next((h['value'] for h in headers if h['name'].lower() == name_lower), default)
 
+@log_function
 def process_single_message(service, msg):
     """Parses email content and decides on action."""
     try:
@@ -183,8 +183,7 @@ def process_single_message(service, msg):
                         body = base64.urlsafe_b64decode(data).decode('utf-8')
                         break
         
-        logger.info(f"Processing Email - From: {sender} ({sender_email}) | Subject: {subject}")
-        logger.info(f"Body preview: {body[:200]}")
+        logger.info(f"Email from: {sender_email} | Subject: {subject}")
         
         # Guard: Don't reply to self or bots to avoid loops
         if "google" in sender.lower() or "bot" in sender.lower() or "noreply" in sender.lower():
@@ -192,12 +191,12 @@ def process_single_message(service, msg):
              return
 
         # Get active scenario from Firestore
-        logger.info(f"Looking up active scenario for: {sender_email}")
+
         active_scenario = get_active_scenario(sender_email)
         
         if not active_scenario:
             logger.warning(f"No active scenario found for {sender_email}")
-            logger.info(f"Subject: {subject}")
+
             
             # Send redirect response
             redirect_message = (
@@ -212,7 +211,7 @@ def process_single_message(service, msg):
         logger.info(f"Found active scenario: {scenario_id} (attempt: {attempt_id})")
         
         # Load scenario and rubric
-        logger.info("Loading Scenario and Rubric...")
+
         scenario = load_scenario(scenario_id)
         rubric = load_rubric(DEFAULT_RUBRIC_PATH)
         
@@ -230,7 +229,7 @@ def process_single_message(service, msg):
             name = f"projects/{project_id}/secrets/openai-api-key/versions/latest"
             response = client.access_secret_version(request={"name": name})
             api_key = response.payload.data.decode('UTF-8').strip()
-            logger.info("Successfully fetched OpenAI API key from Secret Manager using IAM")
+
         except Exception as e:
             logger.error(f"Failed to fetch OpenAI API key from Secret Manager: {e}")
             api_key = os.environ.get("OPENAI_API_KEY")  # Fallback to env var
@@ -239,7 +238,7 @@ def process_single_message(service, msg):
             logger.error("Missing OPENAI_API_KEY")
             return
 
-        logger.info("Initializing EmailAgent...")
+
         agent = EmailAgent(
             model="gpt-4o",
             temperature=0.2,
@@ -255,7 +254,7 @@ def process_single_message(service, msg):
         )
         
         # Process interaction
-        logger.info("Calling agent.evaluate_and_respond (OpenAI)...")
+
         prior_thread = agent.build_starter_thread() 
         
         result = agent.evaluate_and_respond(
@@ -264,7 +263,7 @@ def process_single_message(service, msg):
             rubric=rubric.items
         )
         
-        logger.info(f"Agent finished. Reply generated: {bool(result.counterpart_reply)}")
+
 
         # Update Firestore with grading results
         if result.grading:
@@ -279,7 +278,7 @@ def process_single_message(service, msg):
 
         # Send reply
         if result.counterpart_reply:
-            logger.info(f"Preparing to send reply to {sender}...")
+
             # Build a nice reply that includes the feedback
             reply_body = (
                 f"{result.counterpart_reply}\n\n"
@@ -294,6 +293,7 @@ def process_single_message(service, msg):
     except Exception as e:
         logger.error(f"Error inside process_single_message: {e}", exc_info=True)
 
+@log_function
 def send_reply(service, original_msg, reply_text):
     """Sends a reply via Gmail API."""
     try:
@@ -329,6 +329,7 @@ def send_reply(service, original_msg, reply_text):
     except Exception as e:
         logger.error(f"Error sending reply: {e}", exc_info=True)
 
+@log_function
 def get_gmail_service():
     """Builds Gmail service using OAuth credentials fetched from Secret Manager via IAM."""
     try:
@@ -363,7 +364,7 @@ def get_gmail_service():
             # Fallback: treat as plain string (backwards compat)
             refresh_token = refresh_token_raw
         
-        logger.info("Successfully fetched Gmail OAuth credentials from Secret Manager using IAM")
+
         
         # Build OAuth credentials
         creds = Credentials(
@@ -384,6 +385,7 @@ def get_gmail_service():
 # HTTP Cloud Function: send_scenario_email
 # ============================================================================
 
+@log_function
 def _verify_token(request: Request) -> str | None:
     """
     Verify Firebase ID token from Authorization header.
@@ -402,6 +404,7 @@ def _verify_token(request: Request) -> str | None:
         return None
 
 
+@log_function
 def _build_mime_message(from_addr: str, from_name: str, to_addr: str, subject: str, body: str) -> str:
     """
     Build a MIME message and return as base64-encoded string for Gmail API.
@@ -417,6 +420,7 @@ def _build_mime_message(from_addr: str, from_name: str, to_addr: str, subject: s
 
 
 @functions_framework.http
+@log_function
 def send_scenario_email(request: Request):
     """
     HTTP Cloud Function to send scenario email (REPLY scenarios only).
@@ -436,7 +440,6 @@ def send_scenario_email(request: Request):
         "message": "Scenario email sent"
     }
     """
-    logger.info(f"send_scenario_email called: method={request.method}")
     
     # Handle CORS preflight
     if request.method == 'OPTIONS':

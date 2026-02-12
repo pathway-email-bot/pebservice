@@ -6,10 +6,14 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 import uuid
 
+from .logging_utils import log_function
+
+@log_function
 def get_firestore_client():
     """Returns Firestore client (uses default credentials in Cloud Functions)"""
     return firestore.Client(database='pathway')
 
+@log_function
 def create_attempt(email: str, scenario_id: str) -> str:
     """
     Create new attempt for a user.
@@ -41,6 +45,7 @@ def create_attempt(email: str, scenario_id: str) -> str:
     
     return attempt_id
 
+@log_function
 def get_active_scenario(email: str) -> Optional[tuple[str, str]]:
     """
     Get the active scenario for a user.
@@ -69,6 +74,7 @@ def get_active_scenario(email: str) -> Optional[tuple[str, str]]:
         return (scenario_id, attempt_id)
     return None
 
+@log_function
 def update_attempt_graded(email: str, attempt_id: str, score: int, max_score: int, feedback: str):
     """
     Mark attempt as graded with results.
