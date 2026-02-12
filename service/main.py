@@ -221,7 +221,7 @@ def process_single_message(service, msg):
             client = secretmanager.SecretManagerServiceClient()
             name = f"projects/{project_id}/secrets/openai-api-key/versions/latest"
             response = client.access_secret_version(request={"name": name})
-            api_key = response.payload.data.decode('UTF-8')
+            api_key = response.payload.data.decode('UTF-8').strip()
             logger.info("Successfully fetched OpenAI API key from Secret Manager using IAM")
         except Exception as e:
             logger.error(f"Failed to fetch OpenAI API key from Secret Manager: {e}")
@@ -340,11 +340,20 @@ def get_gmail_service():
         def get_secret(secret_id):
             name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
             response = client.access_secret_version(request={"name": name})
-            return response.payload.data.decode('UTF-8')
+            return response.payload.data.decode('UTF-8').strip()
         
         client_id = get_secret('gmail-client-id')
         client_secret = get_secret('gmail-client-secret')
-        refresh_token = get_secret('gmail-refresh-token-bot')
+        
+        # Refresh token secret is stored as JSON with metadata by get_token.py
+        # Format: {"refresh_token": "...", "generated_at": "...", ...}
+        refresh_token_raw = get_secret('gmail-refresh-token-bot')
+        try:
+            token_data = json.loads(refresh_token_raw)
+            refresh_token = token_data['refresh_token']
+        except (json.JSONDecodeError, KeyError):
+            # Fallback: treat as plain string (backwards compat)
+            refresh_token = refresh_token_raw
         
         logger.info("Successfully fetched Gmail OAuth credentials from Secret Manager using IAM")
         

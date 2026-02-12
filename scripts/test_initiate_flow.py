@@ -9,7 +9,9 @@ Tests the complete flow:
 4. Verify Firestore is updated with grading results
 
 Usage:
-    python scripts/test_initiate_flow.py [--scenario SCENARIO_ID]
+    python scripts/test_initiate_flow.py [--scenario SCENARIO_ID] [--no-save-logs]
+
+Logs are saved to test_logs/<timestamp>_<attempt_id>.log by default.
 
 Requirements:
     - token.test.secret.json (run: python scripts/get_token.py --test)
@@ -22,6 +24,7 @@ import sys
 import json
 import time
 import base64
+import shutil
 from datetime import datetime
 from pathlib import Path
 from email.mime.text import MIMEText
@@ -40,6 +43,26 @@ TEST_EMAIL = "michaeltreynolds.test@gmail.com"
 BOT_EMAIL = "pathwayemailbot@gmail.com"
 DEFAULT_SCENARIO = "missed_remote_standup"
 TOKEN_FILE = "token.test.secret.json"
+LOG_DIR = Path("test_logs")
+
+
+class TeeLogger:
+    """Duplicates writes to both a stream and a log file."""
+    def __init__(self, stream, log_file):
+        self.stream = stream
+        self.log_file = log_file
+
+    def write(self, data):
+        self.stream.write(data)
+        self.log_file.write(data)
+        self.log_file.flush()
+
+    def flush(self):
+        self.stream.flush()
+        self.log_file.flush()
+
+    def fileno(self):
+        return self.stream.fileno()
 
 # Colors for output
 class Colors:
@@ -341,8 +364,26 @@ def verify_email_sent(gmail_service: 'googleapiclient.discovery.Resource') -> bo
 def main():
     # Parse args
     scenario_id = DEFAULT_SCENARIO
-    if len(sys.argv) > 1 and sys.argv[1] == '--scenario':
-        scenario_id = sys.argv[2]
+    save_logs = "--no-save-logs" not in sys.argv
+    if '--scenario' in sys.argv:
+        idx = sys.argv.index('--scenario')
+        if idx + 1 < len(sys.argv):
+            scenario_id = sys.argv[idx + 1]
+    
+    # Set up log capture
+    log_file = None
+    log_path = None
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+    
+    if save_logs:
+        LOG_DIR.mkdir(exist_ok=True)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        # Start with timestamp-only name; rename after we have attempt_id
+        log_path = LOG_DIR / f"{timestamp}_pending.log"
+        log_file = open(log_path, 'w', encoding='utf-8')
+        sys.stdout = TeeLogger(original_stdout, log_file)
+        sys.stderr = TeeLogger(original_stderr, log_file)
     
     print(f"\n{Colors.HEADER}{'='*60}{Colors.ENDC}")
     print(f"{Colors.HEADER}  PEB End-to-End Test: INITIATE Flow{Colors.ENDC}")
@@ -351,6 +392,8 @@ def main():
     print(f"  Bot Email: {BOT_EMAIL}")
     print(f"  Scenario: {scenario_id}")
     print(f"  Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    if log_path:
+        print(f"  Log file: {log_path}")
     
     # Initialize services
     print_step(0, "Initializing services")
@@ -362,6 +405,22 @@ def main():
     try:
         # Step 1: Create Firestore attempt
         attempt_id = create_firestore_attempt(db, scenario_id)
+        
+        # Rename log file to include attempt_id
+        if log_path and log_path.exists():
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            new_log_path = LOG_DIR / f"{timestamp}_{attempt_id[:8]}.log"
+            log_file.flush()
+            # Close, rename, reopen
+            sys.stdout = original_stdout
+            sys.stderr = original_stderr
+            log_file.close()
+            shutil.move(str(log_path), str(new_log_path))
+            log_path = new_log_path
+            log_file = open(log_path, 'a', encoding='utf-8')
+            sys.stdout = TeeLogger(original_stdout, log_file)
+            sys.stderr = TeeLogger(original_stderr, log_file)
+            print_info(f"Log file renamed to: {log_path}")
         
         # Step 2: Send email
         message_id = send_test_email(gmail_service, scenario_id)
@@ -379,11 +438,15 @@ def main():
         if success:
             print(f"{Colors.OKGREEN}{Colors.BOLD}  TEST PASSED ✓{Colors.ENDC}")
             print(f"{Colors.OKGREEN}{'='*60}{Colors.ENDC}")
+            if log_path:
+                print_info(f"Full log saved to: {log_path}")
             return 0
         else:
             print(f"{Colors.FAIL}{Colors.BOLD}  TEST FAILED ✗{Colors.ENDC}")
             print(f"{Colors.FAIL}{'='*60}{Colors.ENDC}")
             print_info("Check Cloud Function logs: gcloud functions logs read process_email --gen2 --region=us-central1 --limit=50")
+            if log_path:
+                print_info(f"Full log saved to: {log_path}")
             return 1
     
     except KeyboardInterrupt:
@@ -394,6 +457,12 @@ def main():
         import traceback
         traceback.print_exc()
         return 1
+    finally:
+        # Restore stdout/stderr and close log file
+        sys.stdout = original_stdout
+        sys.stderr = original_stderr
+        if log_file:
+            log_file.close()
 
 
 if __name__ == "__main__":

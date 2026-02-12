@@ -24,3 +24,5 @@ portal/dist/
 # Auto-generated scenarios (copied from service/email_agent/scenarios/)
 portal/public/scenarios/
 
+# Test log output
+test_logs/

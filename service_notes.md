@@ -73,15 +73,38 @@ firebase deploy --only firestore:rules
 ### Gmail Watch Configuration
 The Gmail API uses push notifications via `users.watch()`. This must be renewed every 7 days. Use `setup_watch.py` to configure or renew the watch on `pathwayemailbot@gmail.com`.
 
+### OAuth Consent Screen & Token Expiration
+- **Status**: Published to **Production** (as of 2026-02-12)
+- **User Type**: External (required for consumer Gmail accounts)
+- **Effect**: Refresh tokens no longer expire after 7 days
+- **Token validity**: Refresh tokens remain valid indefinitely unless:
+  - User explicitly revokes access
+  - Token unused for 6 months (won't happen — email watch keeps it active)
+  - Bot account password is changed
+- **Console**: [OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent?project=pathway-email-bot-6543)
+
+> **Note**: The Gmail *watch* still expires every 7 days and must be renewed separately.
+> The *refresh token* is now permanent. These are two different things.
+
 ## Secret Management Strategy
 
 **GCP Secret Manager is the source of truth** for all secrets. GitHub Secrets are a shadow copy used only for CI/CD.
 
 ### Secrets in GCP Secret Manager
-| Secret Name | Description |
-|:---|:---|
-| `gmail-client-id` | OAuth Client ID |
-| `gmail-client-secret` | OAuth Client Secret |
+| Secret Name | Format | Description |
+|:---|:---|:---|
+| `gmail-client-id` | Plain string | OAuth Client ID |
+| `gmail-client-secret` | Plain string | OAuth Client Secret |
+| `gmail-refresh-token-bot` | **JSON** | OAuth refresh token for pathwayemailbot@gmail.com (permanent, regenerated 2026-02-12) |
+| `gmail-refresh-token-test` | **JSON** | OAuth refresh token for michaeltreynolds.test@gmail.com (test account) |
+| `openai-api-key` | Plain string | OpenAI API key for AI grading |
+
+> **Secret Format Details**: Refresh token secrets are stored as JSON by `get_token.py`:
+> ```json
+> {"refresh_token": "1//06...", "generated_at": "2026-...", "role": "bot", "email": "..."}
+> ```
+> The Cloud Function (`main.py:get_gmail_service`) parses this JSON to extract `refresh_token`.
+> All other secrets are stored as plain strings. All values are `.strip()`'d on read.
 
 ### Syncing Secrets
 
