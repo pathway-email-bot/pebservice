@@ -15,7 +15,7 @@ This file contains TWO separate Google Cloud Functions that share the same codeb
 
 Both functions deploy from this same source directory (./service) and share:
   - email_agent/ (scenario loading, grading logic, email agent)
-  - auth_utils.py, firestore_client.py (shared utilities)
+  - firestore_client.py (shared utilities)
   - Scenario and rubric JSON files
 
 This architecture is required by Cloud Functions deployment model, which needs a main.py

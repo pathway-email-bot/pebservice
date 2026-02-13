@@ -32,7 +32,10 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt pytest
+
+      - name: Run unit tests
+        run: python -m pytest tests/unit/ -v
 
       - name: Copy requirements to service directory
         run: cp requirements.txt service/
@@ -64,3 +67,7 @@ jobs:
             --entry-point=send_scenario_email \
             --trigger-http \
             --allow-unauthenticated
+
+      - name: Run integration tests (post-deploy)
+        run: python -m pytest tests/integration/ -v --timeout=180
+
