@@ -24,6 +24,7 @@
 - [x] Separated test deps into `tests/requirements.txt`
 - [x] Added `pytest-timeout` to `tests/requirements.txt`
 - [x] Documented full SA inventory and IAM in `service_notes.md`
+- [x] **Lazy watch renewal** — auto-renews Gmail push notifications from `send_scenario_email` using Firestore transaction + in-memory cache (distributed-safe)
 
 ## Active – Priority Order 🔜
 
@@ -51,17 +52,27 @@
   - CI needs `gmail-refresh-token-test` accessible for E2E test
   - Validate: unit tests → deploy → integration tests (all green)
 
-### P4 — Housekeeping (~15 min)
-- [ ] Schema consistency audit between scripts, tests, and service code
+### P4 — Gmail tokens need refresh (~10 min)
+- [x] **Refresh bot Gmail token** — uploaded v4 to Secret Manager (2026-02-14)
+- [x] **Refresh test Gmail token** — uploaded v3 to Secret Manager (2026-02-14)
+
+### P5 — Housekeeping
+- [x] **Clean up dead scripts** — deleted 16 unused scripts, updated docs (2026-02-14)
 
 ## Future Considerations 🤔
 
 - [ ] **Rename Firestore database from `pathway` to `(default)`**
   - Named databases cause IAM permission headaches — `roles/datastore.user` isn't enough,
     you also need `roles/datastore.owner`. The `(default)` database just works with `roles/datastore.user`.
-  - Would require updating: `service/main.py`, all integration tests, `_local_test.py`
+  - Would require updating: `service/main.py`, all integration tests
   - Risk: data migration needed (or recreate in new DB)
 - [x] ~~**Tighten runtime SA permissions**~~ — created `peb-runtime` with least-privilege roles (2026-02-14)
 - [x] ~~**Remove unused App Engine SA editor role**~~ — removed `roles/editor` (2026-02-14)
 - [x] ~~**Rename SAs for clarity**~~ — `peb-deployer` (was `peb-service-account`), `peb-runtime` (was default compute SA) (2026-02-14)
 - [ ] **Browser-based sign-in test** (playwright) — automate login flow verification
+- [ ] **Portal UX redesign for scenario buttons**
+  - "Start" button → "Practice Scenario" 
+  - If active scenario: show "Active" (greyed out) instead of start button
+  - For REPLY scenarios when active: show "Resend Email" button
+  - Research: will Gmail mark bot replies as spam? (probably not if users are actively replying)
+- [ ] **Rename `send_scenario_email` → `start_scenario`** — consolidate attempt creation server-side (see implementation plan)

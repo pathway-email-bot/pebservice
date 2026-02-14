@@ -11,7 +11,7 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 | **Pub/Sub Topic** | `email-notifications` | Receives Gmail push notifications |
 | **Pub/Sub Subscription** | `eventarc-us-central1-process-email-479061-sub-493` | Eventarc-managed, triggers Cloud Function |
 | **Cloud Function** | `process_email` | Core AI logic and email handler (**512Mi memory required**) |
-| **Cloud Function** | `send_scenario_email` | HTTP endpoint for sending scenario starter emails |
+| **Cloud Function** | `send_scenario_email` | HTTP endpoint for starting scenarios (rename to `start_scenario` planned) |
 | **Firestore Database** | `pathway` | Stores user attempts, active scenarios, and grading results |
 | **Service Account** | `687061619628-compute@developer.gserviceaccount.com` | Default Compute SA used by functions |
 | **AI Model** | `gpt-4o` (OpenAI) | LLM for grading and responses |
@@ -102,7 +102,11 @@ firebase deploy --only firestore:rules
 ```
 
 ### Gmail Watch Configuration
-The Gmail API uses push notifications via `users.watch()`. This must be renewed every 7 days. Use `setup_watch.py` to configure or renew the watch on `pathwayemailbot@gmail.com`.
+The Gmail API uses push notifications via `users.watch()`. The watch expires every 7 days but is **automatically renewed** by the `_ensure_watch()` function in `main.py`. This uses a Firestore transaction to prevent multiple instances from renewing simultaneously.
+
+- **Watch status**: stored in Firestore at `system/watch_status`
+- **Renewal trigger**: any call to `send_scenario_email` checks and renews if needed
+- **Manual renewal**: no longer needed (previously required `setup_watch.py`)
 
 ### OAuth Consent Screen & Token Expiration
 - **Status**: Published to **Production** (as of 2026-02-12)
@@ -113,9 +117,6 @@ The Gmail API uses push notifications via `users.watch()`. This must be renewed 
   - Token unused for 6 months (won't happen — email watch keeps it active)
   - Bot account password is changed
 - **Console**: [OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent?project=pathway-email-bot-6543)
-
-> **Note**: The Gmail *watch* still expires every 7 days and must be renewed separately.
-> The *refresh token* is now permanent. These are two different things.
 
 ## Secret Management Strategy
 
@@ -179,30 +180,19 @@ gcloud functions deploy process_email --gen2 --region=us-central1 --runtime=pyth
 
 ## Local Development
 
-### 1. Setting up Gmail Watch (Local)
-To receive push notifications or renew the watch locally:
+### Scripts (`scripts/`)
 
-1.  **Prerequisites**:
-    - Ensure you have `client_config.secret.json` (formerly `client_secret.json`) in the root directory.
-    
-2.  **Run Setup**: 
-    ```powershell
-    python setup_watch.py
-    ```
-    - The script will automatically check for credentials.
-    - If environment variables are set, it uses those.
-    - If not, it looks for `token.secret.json`.
-    - If missing, it will launch the browser for you to login and save the token to `token.secret.json`.
-
-### 2. Local Debugging
-To test the AI agent logic without deploying or sending real emails:
-1. Ensure `OPENAI_API_KEY` is set in your environment.
-2. Run the debug script:
-   ```powershell
-   python local_debug_user_email.py
-   ```
+| Script | Purpose |
+|---|---|
+| `auth_utils.py` | Shared OAuth utility — builds Gmail credentials from local token files |
+| `get_token.py` | Interactive OAuth flow → stores refresh token in Secret Manager + local file |
+| `sync_secrets.py` | Syncs secrets from GCP Secret Manager to local `client_config.secret.json` and optionally GitHub |
+| `setup_gcloud.ps1` | One-time GCP project setup (APIs, service accounts) |
+| `setup_infra.ps1` | One-time infrastructure setup (Pub/Sub, Cloud Functions) |
+| `setup_venv.ps1` | Python venv setup for local development |
 
 ### Secret Management
-- **Naming Convention**: All files containing secrets must follow the pattern `*.secret.*` (e.g., `client_config.secret.json`, `token.secret.json`).
+- **Naming Convention**: All files containing secrets must follow the pattern `*.secret.*` (e.g., `client_config.secret.json`, `token.bot.secret.json`).
 - **Git**: These files are globally ignored by `.gitignore`.
+- **Token files**: `token.bot.secret.json` and `token.test.secret.json` live in the repo root.
 

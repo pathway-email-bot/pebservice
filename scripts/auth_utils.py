@@ -6,7 +6,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 # File Constants
-CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+CONFIG_DIR = Path(__file__).resolve().parent.parent # / "config"
 CLIENT_CONFIG_FILE = str(CONFIG_DIR / 'client_config.secret.json')
 
 SCOPES = [

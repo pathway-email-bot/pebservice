@@ -26,6 +26,7 @@ import base64
 import json
 import os
 import logging
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from email.mime.text import MIMEText
 
@@ -34,6 +35,7 @@ from flask import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from google.cloud import secretmanager
+from google.cloud import firestore as firestore_lib
 import firebase_admin
 from firebase_admin import auth as firebase_auth
 
@@ -382,6 +384,123 @@ def get_gmail_service():
 
 
 # ============================================================================
+# Gmail Watch Renewal (lazy, distributed-safe)
+# ============================================================================
+
+# Module-level cache: avoids Firestore reads within the same instance
+_watch_expires_at: datetime | None = None
+
+_WATCH_TOPIC = "projects/pathway-email-bot-6543/topics/email-notifications"
+_WATCH_DOC_PATH = ("system", "watch_status")
+_WATCH_RENEW_BUFFER = timedelta(hours=24)  # renew when <24h left
+_WATCH_CLAIM_TIMEOUT = timedelta(seconds=60)  # stale claim threshold
+_WATCH_DURATION = timedelta(days=7)  # Gmail watch expiry
+
+
+def _ensure_watch(gmail_service):
+    """
+    Renew Gmail push-notification watch if nearing expiry.
+
+    Uses a two-phase approach to prevent thundering herd:
+      1. Firestore transaction claims renewal (only one instance wins)
+      2. Winner calls Gmail watch() API
+      3. Winner writes 'completed' status back to Firestore
+    If the winner crashes, the claim expires after 60s so others can retry.
+    """
+    global _watch_expires_at
+    now = datetime.now(timezone.utc)
+
+    # Fast path: in-memory cache says watch is still fresh
+    if _watch_expires_at and _watch_expires_at > now + _WATCH_RENEW_BUFFER:
+        return
+
+    from .firestore_client import get_firestore_client
+    db = get_firestore_client()
+    doc_ref = db.collection(*_WATCH_DOC_PATH[:1]).document(_WATCH_DOC_PATH[1])
+
+    # Phase 1: Try to claim renewal via transaction
+    transaction = db.transaction()
+    if not _try_claim_watch_renewal(transaction, doc_ref, now):
+        # Another instance is handling it, or watch is still fresh
+        # Update local cache from the Firestore doc we just read
+        snap = doc_ref.get()
+        if snap.exists:
+            data = snap.to_dict()
+            exp = data.get('expires_at')
+            if exp:
+                _watch_expires_at = exp if exp.tzinfo else exp.replace(tzinfo=timezone.utc)
+        return
+
+    # Phase 2: We won the claim — call watch()
+    try:
+        gmail_service.users().watch(
+            userId='me',
+            body={'labelIds': ['INBOX'], 'topicName': _WATCH_TOPIC}
+        ).execute()
+    except Exception as e:
+        logger.warning(f"Gmail watch renewal failed: {e}", exc_info=True)
+        return  # claim will expire in 60s, another instance can retry
+
+    # Phase 3: Confirm success
+    new_expires = now + _WATCH_DURATION
+    doc_ref.update({
+        'status': 'completed',
+        'expires_at': new_expires,
+        'completed_at': now,
+    })
+    _watch_expires_at = new_expires
+    logger.info(f"Gmail watch renewed — expires {new_expires.isoformat()}")
+
+
+@firestore_lib.transactional
+def _try_claim_watch_renewal(transaction, doc_ref, now: datetime) -> bool:
+    """Transactional wrapper — reads doc in transaction, delegates to pure logic."""
+    snapshot = doc_ref.get(transaction=transaction)
+    data = snapshot.to_dict() if snapshot.exists else {}
+    should_claim = _check_and_claim_watch(data, now)
+    if should_claim:
+        transaction.set(doc_ref, {
+            'status': 'renewing',
+            'claimed_at': now,
+            'expires_at': data.get('expires_at'),  # preserve old value
+        })
+    return should_claim
+
+
+def _check_and_claim_watch(data: dict, now: datetime) -> bool:
+    """
+    Pure decision logic: should this instance claim watch renewal?
+
+    Returns True if renewal is needed, False to skip.
+    Testable without Firestore mocks.
+    """
+    expires_at = data.get('expires_at')
+    status = data.get('status')
+    claimed_at = data.get('claimed_at')
+
+    # Normalise timestamps to UTC-aware
+    if expires_at and not getattr(expires_at, 'tzinfo', None):
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if claimed_at and not getattr(claimed_at, 'tzinfo', None):
+        claimed_at = claimed_at.replace(tzinfo=timezone.utc)
+
+    # Case 1: Watch is fresh and confirmed — skip
+    if (status == 'completed'
+            and expires_at
+            and expires_at > now + _WATCH_RENEW_BUFFER):
+        return False
+
+    # Case 2: Another instance is currently renewing (< 60s ago) — skip
+    if (status == 'renewing'
+            and claimed_at
+            and (now - claimed_at) < _WATCH_CLAIM_TIMEOUT):
+        return False
+
+    # Case 3: Needs renewal (expired, never set, or claimer timed out)
+    return True
+
+
+# ============================================================================
 # HTTP Cloud Function: send_scenario_email
 # ============================================================================
 
@@ -508,6 +627,9 @@ def send_scenario_email(request: Request):
         if not gmail_service:
             logger.error("Failed to initialize Gmail service")
             return {'error': 'Gmail service initialization failed'}, 500, cors_headers
+        
+        # Lazily renew Gmail watch — keeps push notifications alive
+        _ensure_watch(gmail_service)
         
         from_name = scenario.starter_sender_name
         subject = f"[PEB:{scenario_id}] {scenario.starter_subject}"

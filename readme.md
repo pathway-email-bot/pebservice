@@ -110,9 +110,12 @@ pebservice/
 │   ├── public/               # Static assets
 │   └── package.json          # Node dependencies
 ├── scripts/                   # Utility scripts
-│   ├── setup_watch.py        # Gmail watch configuration
-│   ├── sync_secrets.py       # Secret management
-│   └── local_debug_user_email.py  # Local testing
+│   ├── auth_utils.py         # Shared OAuth utility
+│   ├── get_token.py          # Interactive OAuth flow → Secret Manager
+│   └── sync_secrets.py       # Secret synchronization (GCP → local/GitHub)
+├── tests/                    # Test suite
+│   ├── unit/                 # Pure logic tests (fully mocked)
+│   └── integration/          # Tests against real GCP services
 ├── design_docs/              # Architecture & planning documents
 ├── .github/workflows/        # CI/CD pipelines
 │   ├── deploy-service.yaml   # Service deployment
@@ -146,8 +149,8 @@ pebservice/
 
 4. **Run locally**
    ```powershell
-   # Test AI grading logic
-   python scripts/local_debug_user_email.py
+   # Run unit tests
+   python -m pytest tests/unit/ -v
    
    # Run portal dev server
    cd portal
@@ -175,7 +178,7 @@ pebservice/
 |----------|------|---------|
 | Pub/Sub Topic | `email-notifications` | Receives Gmail push notifications |
 | Cloud Function | `process_email` | Core AI logic and email handler |
-| Cloud Function | `send_scenario_email` | HTTP endpoint for scenario emails |
+| Cloud Function | `send_scenario_email` | HTTP endpoint for starting scenarios |
 | Firestore Database | `pathway` | Stores attempts and grading results |
 | Secret Manager | Various | OAuth credentials and API keys |
 
@@ -221,19 +224,16 @@ python scripts/sync_secrets.py --list
 
 ### Local Development
 
-**Test AI grading without deploying**:
+**Run tests**:
 ```powershell
-# Set environment variable
-$env:OPENAI_API_KEY = "your-key-here"
+# Unit tests (no GCP access needed)
+python -m pytest tests/unit/ -v
 
-# Run local debug script
-python scripts/local_debug_user_email.py
+# Integration tests (requires GCP auth via gcloud)
+python -m pytest tests/integration/ -v --timeout=180
 ```
 
-**Set up Gmail watch** (must be renewed every 7 days):
-```powershell
-python scripts/setup_watch.py
-```
+> **Note**: Gmail watch is renewed automatically by the service — no manual setup needed.
 
 ### Contributing
 
@@ -295,10 +295,7 @@ git push origin main
 python scripts/sync_secrets.py --github
 ```
 
-**Renew Gmail watch** (every 7 days):
-```powershell
-python scripts/setup_watch.py
-```
+**Gmail watch**: Automatically renewed by the service via `_ensure_watch()`. No manual renewal needed.
 
 **Check deployment status**:
 ```powershell
