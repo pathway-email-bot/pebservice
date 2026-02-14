@@ -70,11 +70,10 @@ jobs:
             --allow-unauthenticated \
             --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com
 
-      - name: Auth as test runner (SA impersonation)
+      - name: Auth as test runner
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: '${{ secrets.GCP_DEPLOYER_KEY }}'
-          service_account: 'peb-test-runner@pathway-email-bot-6543.iam.gserviceaccount.com'
+          credentials_json: '${{ secrets.GCP_TEST_SA_KEY }}'
 
       - name: Run integration tests (post-deploy)
         run: python -m pytest tests/integration/ -v --timeout=180
