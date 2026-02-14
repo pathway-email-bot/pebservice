@@ -1,0 +1,16 @@
+# Test dependencies — for running integration and unit tests
+# Service deps are in service/requirements.txt (installed separately)
+pytest
+pytest-timeout
+
+# Integration tests need these GCP client libraries
+google-cloud-secret-manager==2.*
+google-cloud-firestore==2.*
+firebase-admin==6.*
+google-auth==2.*
+google-auth-oauthlib==1.*
+google-auth-httplib2==0.*
+google-api-python-client==2.*
+
+# Browser automation for sign-in integration tests
+playwright

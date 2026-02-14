@@ -26,3 +26,6 @@ portal/public/scenarios/
 
 # Test log output
 test_logs/
+
+# Scratch files (agent-generated temp output)
+tmp_*

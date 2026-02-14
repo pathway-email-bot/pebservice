@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'service/**'
+      - 'tests/**'
       - '.github/workflows/deploy-service.yaml'
   workflow_dispatch:
 
@@ -32,13 +33,12 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pytest
+        run: |
+          pip install -r service/requirements.txt
+          pip install -r tests/requirements.txt
 
       - name: Run unit tests
         run: python -m pytest tests/unit/ -v
-
-      - name: Copy requirements to service directory
-        run: cp requirements.txt service/
 
       - name: Google Auth
         id: auth

@@ -2,7 +2,7 @@
  * Firestore service for managing user attempts and scenarios
  */
 import { db, auth } from './firebase-config';
-import { collection, doc, onSnapshot, query, where, orderBy, limit, setDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, where, orderBy, limit, setDoc } from 'firebase/firestore';
 
 export interface Attempt {
     id: string;
@@ -32,21 +32,21 @@ export async function createAttempt(scenarioId: string): Promise<string> {
 
     const attemptsRef = collection(db, 'users', user.email, 'attempts');
     const attemptRef = doc(attemptsRef);
-    
+
     const now = new Date();
     await setDoc(attemptRef, {
         scenarioId,
         status: 'pending',
         startedAt: now,
     });
-    
+
     // Update user's active scenario and attempt
     const userRef = doc(db, 'users', user.email);
     await setDoc(userRef, {
         activeScenarioId: scenarioId,
         activeAttemptId: attemptRef.id,
     }, { merge: true });
-    
+
     return attemptRef.id;
 }
 

@@ -1,23 +1,45 @@
 import './style.css';
 import { renderLoginPage } from './pages/login';
 import { renderScenariosPage } from './pages/scenarios';
+import { onAuthChange, completeMagicLinkSignIn } from './auth';
 
-// Simple router based on URL path
+/**
+ * Routing is auth-state driven, not URL-path driven.
+ *
+ *   Authenticated   → scenarios page
+ *   Not authenticated → login page
+ *
+ * The URL is ALWAYS the root (/pebservice/ in prod, / in dev).
+ * There are no subpath routes like /scenarios — the page shown
+ * depends entirely on Firebase Auth state (persisted in IndexedDB).
+ *
+ * Why this matters:
+ *   - Refresh works: URL stays at root, Firebase re-hydrates auth → same page renders.
+ *   - No 404 risk: GitHub Pages only needs to serve index.html from the root.
+ *   - Magic link redirect goes to root too (see auth.ts getActionCodeSettings).
+ *   - No need for 404.html SPA hacks on GitHub Pages.
+ */
 const app = document.querySelector<HTMLDivElement>('#app')!;
-const path = window.location.pathname;
 
-// Get the base path from Vite config (e.g., '/pebservice/' in production, '/' in dev)
-const basePath = import.meta.env.BASE_URL;
+async function boot() {
+    // If returning from a magic link, complete the sign-in first
+    try {
+        const user = await completeMagicLinkSignIn();
+        if (user) {
+            console.log('Signed in via magic link:', user.email);
+        }
+    } catch (error) {
+        console.error('Magic link sign-in error:', error);
+    }
 
-// Normalize paths by removing trailing slashes for comparison
-const normalizePath = (p: string) => p.replace(/\/$/, '');
-const normalizedPath = normalizePath(path);
-const scenariosPath = normalizePath(basePath + 'scenarios');
-
-// Route to appropriate page
-if (normalizedPath === scenariosPath) {
-    renderScenariosPage(app);
-} else {
-    // Default to login page
-    renderLoginPage(app);
+    // Listen for auth state and render accordingly
+    onAuthChange((user) => {
+        if (user) {
+            renderScenariosPage(app);
+        } else {
+            renderLoginPage(app);
+        }
+    });
 }
+
+boot();

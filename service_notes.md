@@ -27,9 +27,40 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 - `secretmanager.googleapis.com` - Secret Manager
 - `firestore.googleapis.com` - Firestore database
 
+## Service Accounts & IAM
+
+*Last audited: 2026-02-14*
+
+| Service Account | Purpose | Roles | Key file / used by |
+|---|---|---|---|
+| `peb-service-account@…` | **CI/CD deploy** — deploys Cloud Functions from GitHub Actions | `cloudfunctions.developer`, `run.admin`, `artifactregistry.writer`, `iam.serviceAccountUser`, `logging.logWriter`, `pubsub.editor`, `pubsub.subscriber` | `key.secret.json` / GitHub secret `GCP_SA_KEY` |
+| `peb-test-runner@…` | **Integration tests** — used by both CI and local dev | `secretmanager.secretAccessor`, `datastore.user`, `datastore.owner`*, `cloudfunctions.viewer` | `test-runner-key.secret.json` / GitHub secret `GCP_TEST_SA_KEY` (not yet set) |
+| `687061619628-compute@…` | **Cloud Function runtime** — identity both functions run as | `roles/editor` ⚠️ overly broad (see todo.md) | Automatic (GCP metadata server) |
+| `…@appspot.gserviceaccount.com` | App Engine default (auto-created, **unused**) | `roles/editor` | — |
+| `firebase-adminsdk-fbsvc@…` | Firebase Admin SDK agent (**Google-managed, do not modify**) | `firebase.sdkAdminServiceAgent`, `firebaseauth.admin`, `iam.serviceAccountTokenCreator` | — |
+
+\* `datastore.owner` is required because the `pathway` database is a named database (not `(default)`). `datastore.user` alone is insufficient for named databases — this is a GCP IAM quirk. See todo.md for migration consideration.
+
+### Credential Discovery (ADC)
+
+Google client libraries check credentials in order: `GOOGLE_APPLICATION_CREDENTIALS` env var → `gcloud auth application-default login` → GCP metadata server.
+
+| Environment | Identity | How |
+|---|---|---|
+| **Cloud Functions** | `687061619628-compute@…` | Metadata server (automatic) |
+| **GitHub Actions — deploy** | `peb-service-account@…` | `google-github-actions/auth` sets env var |
+| **GitHub Actions — tests** | `peb-test-runner@…` | Needs `GCP_TEST_SA_KEY` secret (todo) |
+| **Local — tests** | `peb-test-runner@…` | `tests/conftest.py` auto-discovers `test-runner-key.secret.json` |
+
 ## Firestore Database
 
 **Location**: `us-central` (same region as Cloud Functions)
+**Database name**: `pathway` (named database, NOT `(default)`)
+
+> **⚠️ Named Database Note**: Using a named database (`pathway`) instead of `(default)` adds IAM
+> complexity — `roles/datastore.user` alone is insufficient; `roles/datastore.owner` is also needed.
+> This has caused repeated permission issues. Consider migrating to `(default)` if the project
+> only ever needs one database (see todo.md).
 
 ### Data Structure
 
@@ -142,7 +173,6 @@ Use `setup_infra.ps1` to create the project, enable APIs, and configure the serv
 
 ```powershell
 # Deploy process_email (must include --memory=512Mi)
-Copy-Item requirements.txt service/
 gcloud functions deploy process_email --gen2 --region=us-central1 --runtime=python311 --source=service --entry-point=process_email --trigger-topic=email-notifications --memory=512Mi --project=pathway-email-bot-6543
 ```
 
