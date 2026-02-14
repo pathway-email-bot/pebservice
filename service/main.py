@@ -8,10 +8,11 @@ This file contains TWO separate Google Cloud Functions that share the same codeb
    - Fetches email, grades it using EmailAgent + rubric, saves to Firestore, sends reply
    - Deployed as: gcloud functions deploy process_email --trigger-topic=gmail-notifications
 
-2. send_scenario_email (HTTP trigger)
-   - Called by portal frontend to send scenario starter email (REPLY scenarios only)
-   - Validates Firebase auth token, loads scenario, sends email via Gmail API
-   - Deployed as: gcloud functions deploy send_scenario_email --trigger-http
+2. start_scenario (HTTP trigger)
+   - Called by portal frontend to start a scenario (INITIATE or REPLY)
+   - Validates Firebase auth, creates Firestore attempt, ensures Gmail watch
+   - For REPLY scenarios: also sends starter email via Gmail API
+   - Deployed as: gcloud functions deploy start_scenario --trigger-http
 
 Both functions deploy from this same source directory (./service) and share:
   - email_agent/ (scenario loading, grading logic, email agent)
@@ -501,7 +502,7 @@ def _check_and_claim_watch(data: dict, now: datetime) -> bool:
 
 
 # ============================================================================
-# HTTP Cloud Function: send_scenario_email
+# HTTP Cloud Function: start_scenario
 # ============================================================================
 
 @log_function
@@ -540,23 +541,26 @@ def _build_mime_message(from_addr: str, from_name: str, to_addr: str, subject: s
 
 @functions_framework.http
 @log_function
-def send_scenario_email(request: Request):
+def start_scenario(request: Request):
     """
-    HTTP Cloud Function to send scenario email (REPLY scenarios only).
-    Portal creates Firestore attempt BEFORE calling this function.
-    This function is ONLY for sending email.
-    
+    HTTP Cloud Function to start a scenario for a student.
+
+    Handles both INITIATE and REPLY scenarios:
+      - Creates Firestore attempt (server-side, single source of truth)
+      - Ensures Gmail watch is active
+      - For REPLY scenarios: also sends the starter email from the bot
+
     Request body:
     {
         "email": "student@example.com",
-        "scenarioId": "missed_remote_standup",
-        "attemptId": "abc123"
+        "scenarioId": "missed_remote_standup"
     }
-    
+
     Response:
     {
         "success": true,
-        "message": "Scenario email sent"
+        "attemptId": "uuid-here",
+        "message": "Scenario started"
     }
     """
     
@@ -586,15 +590,12 @@ def send_scenario_email(request: Request):
         request_json = request.get_json() or {}
         student_email = request_json.get('email')
         scenario_id = request_json.get('scenarioId')
-        attempt_id = request_json.get('attemptId')
         
         # Validate request
         if not student_email:
             return {'error': 'Missing email in request'}, 400, cors_headers
         if not scenario_id:
             return {'error': 'Missing scenarioId in request'}, 400, cors_headers
-        if not attempt_id:
-            return {'error': 'Missing attemptId in request'}, 400, cors_headers
         
         # Verify user is requesting for their own email
         if student_email != token_email:
@@ -608,50 +609,49 @@ def send_scenario_email(request: Request):
             return {'error': f'Scenario not found: {scenario_id}'}, 404, cors_headers
         
         scenario = load_scenario(scenario_path)
-        logger.info(f"Loaded scenario: {scenario_id}")
+        logger.info(f"Loaded scenario: {scenario_id} (type={scenario.interaction_type})")
         
-        # Verify this is a REPLY scenario (bot sends first)
-        if scenario.interaction_type != 'reply':
-            logger.warning(f"Attempt to send email for INITIATE scenario: {scenario_id}")
-            return {'error': 'This endpoint is only for REPLY scenarios. INITIATE scenarios do not send emails.'}, 400, cors_headers
+        # Create Firestore attempt (server-side, single source of truth)
+        from .firestore_client import create_attempt
+        attempt_id = create_attempt(student_email, scenario_id)
+        logger.info(f"Created attempt {attempt_id} for {student_email}")
         
-        # Generate starter email using EmailAgent
-        email_agent = EmailAgent()
-        starter_thread = email_agent.build_starter_thread(scenario)
-        starter_message = starter_thread.messages[0]  # The bot's starter email
-        
-        logger.info(f"Generated starter email for {scenario_id}")
-        
-        # Send email via Gmail API (authenticated as bot account)
+        # Ensure Gmail watch is active
         gmail_service = get_gmail_service()
         if not gmail_service:
             logger.error("Failed to initialize Gmail service")
             return {'error': 'Gmail service initialization failed'}, 500, cors_headers
         
-        # Lazily renew Gmail watch — keeps push notifications alive
         _ensure_watch(gmail_service)
         
-        from_name = scenario.starter_sender_name
-        subject = f"[PEB:{scenario_id}] {scenario.starter_subject}"
-        body = starter_message.content
-        
-        raw_message = _build_mime_message(
-            from_addr='pathwayemailbot@gmail.com',
-            from_name=from_name,
-            to_addr=student_email,
-            subject=subject,
-            body=body
-        )
-        
-        gmail_service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
-        logger.info(f"Email sent to {student_email} for scenario {scenario_id} (attempt {attempt_id})")
+        # For REPLY scenarios, send the starter email from the bot
+        if scenario.interaction_type == 'reply':
+            email_agent = EmailAgent()
+            starter_thread = email_agent.build_starter_thread(scenario)
+            starter_message = starter_thread.messages[0]
+            
+            from_name = scenario.starter_sender_name
+            subject = f"[PEB:{scenario_id}] {scenario.starter_subject}"
+            body = starter_message.content
+            
+            raw_message = _build_mime_message(
+                from_addr='pathwayemailbot@gmail.com',
+                from_name=from_name,
+                to_addr=student_email,
+                subject=subject,
+                body=body
+            )
+            
+            gmail_service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
+            logger.info(f"Starter email sent to {student_email} for scenario {scenario_id}")
         
         return {
             'success': True,
-            'message': f'Scenario email sent to {student_email}',
+            'attemptId': attempt_id,
+            'message': f'Scenario started: {scenario_id}',
         }, 200, cors_headers
         
     except Exception as e:
-        logger.error(f"Error in send_scenario_email: {e}", exc_info=True)
+        logger.error(f"Error in start_scenario: {e}", exc_info=True)
         return {'error': str(e)}, 500, cors_headers
 

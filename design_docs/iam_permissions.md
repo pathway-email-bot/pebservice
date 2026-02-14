@@ -8,7 +8,7 @@ Both Cloud Functions run as the default Compute Engine service account:
 - **Purpose**: Execute Cloud Functions code at runtime
 - **Functions using this account**:
   - `process_email` (Pub/Sub triggered)
-  - `send_scenario_email` (HTTP triggered)
+  - `start_scenario` (HTTP triggered)
 
 ### GitHub Actions Deployment Service Account
 GitHub Actions uses this service account to deploy Cloud Functions:
@@ -100,12 +100,12 @@ For `process_email` function to receive email notifications:
 ```bash
 # Secrets are auto-configured via GitHub Actions workflow
 # Manual deployment:
-gcloud functions deploy send_scenario_email \
+gcloud functions deploy start_scenario \
   --gen2 \
   --region=us-central1 \
   --runtime=python311 \
   --source=./service \
-  --entry-point=send_scenario_email \
+  --entry-point=start_scenario \
   --trigger-http \
   --allow-unauthenticated
 ```
@@ -113,12 +113,12 @@ gcloud functions deploy send_scenario_email \
 ### Alternative: Deploy with Environment Variables
 ```bash
 # If you want to bypass Secret Manager:
-gcloud functions deploy send_scenario_email \
+gcloud functions deploy start_scenario \
   --gen2 \
   --region=us-central1 \
   --runtime=python311 \
   --source=./service \
-  --entry-point=send_scenario_email \
+  --entry-point=start_scenario \
   --trigger-http \
   --allow-unauthenticated \
   --set-env-vars="GMAIL_CLIENT_ID=...,GMAIL_CLIENT_SECRET=...,GMAIL_REFRESH_TOKEN=..."
@@ -137,7 +137,7 @@ gcloud secrets get-iam-policy gmail-refresh-token-bot
 
 # Check what service account a function uses
 gcloud functions describe process_email --gen2 --region=us-central1 --format="value(serviceConfig.serviceAccountEmail)"
-gcloud functions describe send_scenario_email --gen2 --region=us-central1 --format="value(serviceConfig.serviceAccountEmail)"
+gcloud functions describe start_scenario --gen2 --region=us-central1 --format="value(serviceConfig.serviceAccountEmail)"
 ```
 
 ### Test Secret Access
@@ -153,7 +153,7 @@ print(os.environ.get('GMAIL_CLIENT_ID'))  # Should print the client ID
 
 2. **Secret Rotation**: OAuth refresh tokens should be rotated periodically. See [todo_some_other_day.md](../todo_some_other_day.md) for automation plans.
 
-3. **Unauthenticated HTTP Function**: `send_scenario_email` allows unauthenticated access because Firebase Auth validation happens in the function code, not at the Cloud Functions level.
+3. **Unauthenticated HTTP Function**: `start_scenario` allows unauthenticated access because Firebase Auth validation happens in the function code, not at the Cloud Functions level.
 
 4. **Least Privilege**: The service account only has access to the three Gmail secrets. Firestore access is implicitly granted via Firebase Admin SDK.
 

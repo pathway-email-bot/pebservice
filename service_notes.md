@@ -11,7 +11,7 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 | **Pub/Sub Topic** | `email-notifications` | Receives Gmail push notifications |
 | **Pub/Sub Subscription** | `eventarc-us-central1-process-email-479061-sub-493` | Eventarc-managed, triggers Cloud Function |
 | **Cloud Function** | `process_email` | Core AI logic and email handler (**512Mi memory required**) |
-| **Cloud Function** | `send_scenario_email` | HTTP endpoint for starting scenarios (rename to `start_scenario` planned) |
+| **Cloud Function** | `start_scenario` | HTTP endpoint for starting scenarios |
 | **Firestore Database** | `pathway` | Stores user attempts, active scenarios, and grading results |
 | **Service Account** | `687061619628-compute@developer.gserviceaccount.com` | Default Compute SA used by functions |
 | **AI Model** | `gpt-4o` (OpenAI) | LLM for grading and responses |
@@ -105,7 +105,7 @@ firebase deploy --only firestore:rules
 The Gmail API uses push notifications via `users.watch()`. The watch expires every 7 days but is **automatically renewed** by the `_ensure_watch()` function in `main.py`. This uses a Firestore transaction to prevent multiple instances from renewing simultaneously.
 
 - **Watch status**: stored in Firestore at `system/watch_status`
-- **Renewal trigger**: any call to `send_scenario_email` checks and renews if needed
+- **Renewal trigger**: any call to `start_scenario` checks and renews if needed
 - **Manual renewal**: no longer needed (previously required `setup_watch.py`)
 
 ### OAuth Consent Screen & Token Expiration

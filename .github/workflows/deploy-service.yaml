@@ -58,14 +58,14 @@ jobs:
             --memory=512Mi \
             --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com
 
-      - name: Deploy send_scenario_email to Cloud Functions (Gen 2)
+      - name: Deploy start_scenario to Cloud Functions (Gen 2)
         run: |
-          gcloud functions deploy send_scenario_email \
+          gcloud functions deploy start_scenario \
             --gen2 \
             --region=${{ env.REGION }} \
             --runtime=python311 \
             --source=service \
-            --entry-point=send_scenario_email \
+            --entry-point=start_scenario \
             --trigger-http \
             --allow-unauthenticated \
             --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com

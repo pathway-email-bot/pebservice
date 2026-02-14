@@ -6,56 +6,55 @@
  */
 
 import { logout, getCurrentUser } from '../auth';
-import { listScenarios, sendScenarioEmail, type ScenarioMetadata } from '../scenarios-api';
-import { createAttempt, listenToAttempt, type Attempt } from '../firestore-service';
+import { listScenarios, startScenario, type ScenarioMetadata } from '../scenarios-api';
+import { listenToAttempt, type Attempt } from '../firestore-service';
 import type { User } from 'firebase/auth';
 
 // Global state
 let currentScenarios: ScenarioMetadata[] = [];
-let activeAttemptId: string | null = null;
 let activeScenarioId: string | null = null;
 let attemptUnsubscribe: (() => void) | null = null;
 
 export async function renderScenariosPage(container: HTMLElement): Promise<void> {
-    // main.ts handles auth routing — if we're here, user should be logged in
-    const currentUser = getCurrentUser();
+  // main.ts handles auth routing — if we're here, user should be logged in
+  const currentUser = getCurrentUser();
 
-    if (currentUser) {
-        try {
-            await renderAuthenticatedView(container, currentUser);
-        } catch (error) {
-            console.error('Error rendering authenticated view:', error);
-            container.innerHTML = `<div class="message message-error">Error loading scenarios: ${error}</div>`;
-        }
-    } else {
-        renderUnauthenticatedView(container);
+  if (currentUser) {
+    try {
+      await renderAuthenticatedView(container, currentUser);
+    } catch (error) {
+      console.error('Error rendering authenticated view:', error);
+      container.innerHTML = `<div class="message message-error">Error loading scenarios: ${error}</div>`;
     }
+  } else {
+    renderUnauthenticatedView(container);
+  }
 }
 
 async function renderAuthenticatedView(container: HTMLElement, user: User): Promise<void> {
-    // Load scenarios from bundled files
-    try {
-        currentScenarios = await listScenarios();
+  // Load scenarios from bundled files
+  try {
+    currentScenarios = await listScenarios();
 
-        if (!currentScenarios || currentScenarios.length === 0) {
-            container.innerHTML = `
+    if (!currentScenarios || currentScenarios.length === 0) {
+      container.innerHTML = `
                 <div class="scenarios-page">
                     <div class="message message-warning">No scenarios found. Please check the build configuration.</div>
                 </div>
             `;
-            return;
-        }
-    } catch (error) {
-        console.error('Error loading scenarios:', error);
-        container.innerHTML = `
+      return;
+    }
+  } catch (error) {
+    console.error('Error loading scenarios:', error);
+    container.innerHTML = `
             <div class="scenarios-page">
                 <div class="message message-error">Failed to load scenarios: ${error}</div>
             </div>
         `;
-        return;
-    }
+    return;
+  }
 
-    container.innerHTML = `
+  container.innerHTML = `
     <div class="scenarios-page">
       <header class="page-header">
         <h1>📧 Email Practice Scenarios</h1>
@@ -76,160 +75,102 @@ async function renderAuthenticatedView(container: HTMLElement, user: User): Prom
     </div>
   `;
 
-    // Add logout handler
-    document.getElementById('logout-btn')?.addEventListener('click', async () => {
-        await logout();
-        // Auth listener in main.ts will automatically show login page
-    });
+  // Add logout handler
+  document.getElementById('logout-btn')?.addEventListener('click', async () => {
+    await logout();
+    // Auth listener in main.ts will automatically show login page
+  });
 
-    // Add start button handlers
-    attachScenarioHandlers();
+  // Add start button handlers
+  attachScenarioHandlers();
 }
 
 function attachScenarioHandlers(): void {
-    // Start button handlers
-    document.querySelectorAll('.start-btn').forEach(btn => {
-        btn.addEventListener('click', handleStartScenario);
-    });
-
-    // Resend email button handlers
-    document.querySelectorAll('.resend-btn').forEach(btn => {
-        btn.addEventListener('click', handleResendEmail);
-    });
+  // Start button handlers
+  document.querySelectorAll('.start-btn').forEach(btn => {
+    btn.addEventListener('click', handleStartScenario);
+  });
 }
 
 async function handleStartScenario(e: Event): Promise<void> {
-    const scenarioId = (e.target as HTMLElement).dataset.scenarioId;
-    if (!scenarioId) return;
+  const scenarioId = (e.target as HTMLElement).dataset.scenarioId;
+  if (!scenarioId) return;
 
-    const scenario = currentScenarios.find(s => s.id === scenarioId);
-    if (!scenario) return;
+  const scenario = currentScenarios.find(s => s.id === scenarioId);
+  if (!scenario) return;
 
-    const button = e.target as HTMLButtonElement;
-    const card = button.closest('.scenario-card');
-    const errorDiv = card?.querySelector('.error-message') as HTMLElement;
+  const button = e.target as HTMLButtonElement;
+  const card = button.closest('.scenario-card');
+  const errorDiv = card?.querySelector('.error-message') as HTMLElement;
 
-    // Clear any previous errors
+  // Clear any previous errors
+  if (errorDiv) {
+    errorDiv.style.display = 'none';
+  }
+
+  button.disabled = true;
+  button.innerHTML = '⏳ Starting...';
+
+  try {
+    // Call start_scenario Cloud Function (creates attempt + sends email for REPLY)
+    const result = await startScenario(scenarioId);
+    activeScenarioId = scenarioId;
+
+    // Expand this scenario card and show instructions
+    rerenderScenarios();
+
+    // Set up Firestore listener for grading results
+    if (attemptUnsubscribe) {
+      attemptUnsubscribe();
+    }
+    attemptUnsubscribe = listenToAttempt(result.attemptId, (attempt) => {
+      if (attempt && attempt.status === 'graded') {
+        updateScenarioWithGrading(scenarioId, attempt);
+      }
+    });
+
+  } catch (error) {
+    console.error('Error starting scenario:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
     if (errorDiv) {
-        errorDiv.style.display = 'none';
+      errorDiv.textContent = `❌ Error: ${errorMessage}`;
+      errorDiv.style.display = 'block';
     }
 
-    button.disabled = true;
-    button.innerHTML = '⏳ Starting...';
-
-    try {
-        // 1. Always create Firestore attempt first
-        const attemptId = await createAttempt(scenarioId);
-        activeAttemptId = attemptId;
-        activeScenarioId = scenarioId;
-
-        // 2. For REPLY scenarios, also send email via Cloud Function
-        if (scenario.interaction_type === 'reply') {
-            try {
-                await sendScenarioEmail(scenarioId, attemptId);
-            } catch (emailError) {
-                console.error('Error sending scenario email:', emailError);
-                // Don't fail the whole operation - user can retry with "Resend Email" button
-                // Show warning in the expanded drawer (will be visible after rerender)
-            }
-        }
-
-        // 3. Expand this scenario card and show instructions
-        rerenderScenarios();
-
-        // 4. Set up Firestore listener for grading results
-        if (attemptUnsubscribe) {
-            attemptUnsubscribe();
-        }
-        attemptUnsubscribe = listenToAttempt(attemptId, (attempt) => {
-            if (attempt && attempt.status === 'graded') {
-                updateScenarioWithGrading(scenarioId, attempt);
-            }
-        });
-
-    } catch (error) {
-        console.error('Error starting scenario:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-        if (errorDiv) {
-            errorDiv.textContent = `❌ Error: ${errorMessage}`;
-            errorDiv.style.display = 'block';
-        }
-
-        button.disabled = false;
-        button.textContent = 'Start';
-    }
-}
-
-async function handleResendEmail(e: Event): Promise<void> {
-    const scenarioId = (e.target as HTMLElement).dataset.scenarioId;
-    if (!scenarioId || !activeAttemptId) return;
-
-    const button = e.target as HTMLButtonElement;
-    const drawer = button.closest('.scenario-drawer');
-    const statusSection = drawer?.querySelector('.status-section') as HTMLElement;
-    const originalText = button.textContent;
-
-    button.disabled = true;
-    button.innerHTML = '⏳ Sending...';
-
-    try {
-        await sendScenarioEmail(scenarioId, activeAttemptId);
-
-        if (statusSection) {
-            statusSection.innerHTML = '<p class="success-status">✅ Email sent! Check your inbox.</p>';
-        }
-
-        button.innerHTML = '✓ Sent';
-        setTimeout(() => {
-            button.innerHTML = originalText || '📧 Resend Email';
-            button.disabled = false;
-
-            if (statusSection) {
-                statusSection.innerHTML = '<p class="pending-status">⏳ Waiting for your email...</p>';
-            }
-        }, 3000);
-    } catch (error) {
-        console.error('Error resending email:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-        if (statusSection) {
-            statusSection.innerHTML = `<p class="error-status">❌ Error: ${errorMessage}</p>`;
-        }
-
-        button.disabled = false;
-        button.innerHTML = originalText || '📧 Resend Email';
-    }
+    button.disabled = false;
+    button.textContent = 'Start';
+  }
 }
 
 function rerenderScenarios(): void {
-    const listContainer = document.getElementById('scenario-list');
-    if (!listContainer) return;
+  const listContainer = document.getElementById('scenario-list');
+  if (!listContainer) return;
 
-    listContainer.innerHTML = currentScenarios
-        .map(scenario => renderScenarioCard(scenario, scenario.id === activeScenarioId))
-        .join('');
+  listContainer.innerHTML = currentScenarios
+    .map(scenario => renderScenarioCard(scenario, scenario.id === activeScenarioId))
+    .join('');
 
-    // Reattach event handlers
-    attachScenarioHandlers();
+  // Reattach event handlers
+  attachScenarioHandlers();
 }
 
 function updateScenarioWithGrading(scenarioId: string, attempt: Attempt): void {
-    const card = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"]`);
-    if (!card) return;
+  const card = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"]`);
+  if (!card) return;
 
-    const drawer = card.querySelector('.scenario-drawer');
-    if (!drawer) return;
+  const drawer = card.querySelector('.scenario-drawer');
+  if (!drawer) return;
 
-    // Find or create grading section
-    let gradingSection = drawer.querySelector('.grading-results');
-    if (!gradingSection) {
-        gradingSection = document.createElement('div');
-        gradingSection.className = 'grading-results';
-        drawer.appendChild(gradingSection);
-    }
+  // Find or create grading section
+  let gradingSection = drawer.querySelector('.grading-results');
+  if (!gradingSection) {
+    gradingSection = document.createElement('div');
+    gradingSection.className = 'grading-results';
+    drawer.appendChild(gradingSection);
+  }
 
-    gradingSection.innerHTML = `
+  gradingSection.innerHTML = `
         <div class="grading-header">
             <h4>📊 Results</h4>
             <div class="score">Score: ${attempt.score}/${attempt.maxScore}</div>
@@ -245,9 +186,9 @@ function updateScenarioWithGrading(scenarioId: string, attempt: Attempt): void {
 }
 
 function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): string {
-    const isActive = isExpanded;
+  const isActive = isExpanded;
 
-    return `
+  return `
     <div class="scenario-card ${isActive ? 'active' : ''}" data-scenario-id="${scenario.id}">
       <div class="scenario-header">
         <div class="scenario-info">
@@ -280,9 +221,6 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
             ` : `
               <p><strong>Check your email inbox</strong> for a message from the bot.</p>
               <p>Reply to that email with your response. You'll receive feedback automatically.</p>
-              <button class="btn btn-secondary resend-btn" data-scenario-id="${scenario.id}">
-                📧 Resend Email
-              </button>
             `}
           </div>
           
@@ -296,7 +234,7 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
 }
 
 function renderUnauthenticatedView(container: HTMLElement): void {
-    container.innerHTML = `
+  container.innerHTML = `
     <div class="scenarios-page">
       <div class="card" style="max-width: 400px; margin: 100px auto; text-align: center;">
         <h2>Please Sign In</h2>

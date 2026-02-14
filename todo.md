@@ -24,7 +24,7 @@
 - [x] Separated test deps into `tests/requirements.txt`
 - [x] Added `pytest-timeout` to `tests/requirements.txt`
 - [x] Documented full SA inventory and IAM in `service_notes.md`
-- [x] **Lazy watch renewal** — auto-renews Gmail push notifications from `send_scenario_email` using Firestore transaction + in-memory cache (distributed-safe)
+- [x] **Lazy watch renewal** — auto-renews Gmail push notifications from `start_scenario` using Firestore transaction + in-memory cache (distributed-safe)
 
 ## Active – Priority Order 🔜
 
@@ -75,4 +75,4 @@
   - If active scenario: show "Active" (greyed out) instead of start button
   - For REPLY scenarios when active: show "Resend Email" button
   - Research: will Gmail mark bot replies as spam? (probably not if users are actively replying)
-- [ ] **Rename `send_scenario_email` → `start_scenario`** — consolidate attempt creation server-side (see implementation plan)
+- [x] **Rename `send_scenario_email` → `start_scenario`** — consolidated attempt creation server-side (2026-02-14)

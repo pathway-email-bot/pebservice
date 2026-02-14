@@ -24,15 +24,15 @@ export interface ScenarioMetadata {
   starter_email_generation_hint: string;
 }
 
-export interface SendScenarioRequest {
-    email: string;
-    scenarioId: string;
+export interface StartScenarioRequest {
+  email: string;
+  scenarioId: string;
 }
 
-export interface SendScenarioResponse {
-    success: boolean;
-    attemptId: string;
-    message: string;
+export interface StartScenarioResponse {
+  success: boolean;
+  attemptId: string;
+  message: string;
 }
 
 /**
@@ -43,14 +43,14 @@ export async function listScenarios(): Promise<ScenarioMetadata[]> {
   try {
     // Fetch the manifest of scenario files created at build time
     const response = await fetch('./scenarios/manifest.json');
-    
+
     if (!response.ok) {
       console.warn('Scenarios manifest not found, falling back to empty list');
       return [];
     }
-    
+
     const manifest = await response.json() as string[];
-    
+
     // Load each scenario JSON file
     const scenarios = await Promise.all(
       manifest.map(async (filename) => {
@@ -70,7 +70,7 @@ export async function listScenarios(): Promise<ScenarioMetadata[]> {
         }
       })
     );
-    
+
     // Filter out any null values from failed loads
     return scenarios.filter((s): s is ScenarioMetadata => s !== null);
   } catch (error) {
@@ -80,34 +80,33 @@ export async function listScenarios(): Promise<ScenarioMetadata[]> {
 }
 
 /**
- * Send scenario email to start a new attempt (REPLY scenarios only)
- * Note: Portal creates Firestore attempt BEFORE calling this
+ * Start a scenario — creates the attempt server-side and
+ * sends the starter email for REPLY scenarios.
  */
-export async function sendScenarioEmail(scenarioId: string, attemptId: string): Promise<SendScenarioResponse> {
-    const user = auth.currentUser;
-    if (!user) {
-        throw new Error('User not authenticated');
-    }
+export async function startScenario(scenarioId: string): Promise<StartScenarioResponse> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
 
-    const token = await user.getIdToken();
+  const token = await user.getIdToken();
 
-    const response = await fetch(`${CLOUD_FUNCTION_BASE_URL}/send_scenario_email`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-            email: user.email,
-            scenarioId,
-            attemptId,
-        }),
-    });
+  const response = await fetch(`${CLOUD_FUNCTION_BASE_URL}/start_scenario`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      email: user.email,
+      scenarioId,
+    }),
+  });
 
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to send scenario email');
-    }
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to start scenario');
+  }
 
-    return response.json();
+  return response.json();
 }

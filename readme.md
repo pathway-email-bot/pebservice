@@ -178,7 +178,7 @@ pebservice/
 |----------|------|---------|
 | Pub/Sub Topic | `email-notifications` | Receives Gmail push notifications |
 | Cloud Function | `process_email` | Core AI logic and email handler |
-| Cloud Function | `send_scenario_email` | HTTP endpoint for starting scenarios |
+| Cloud Function | `start_scenario` | HTTP endpoint for starting scenarios |
 | Firestore Database | `pathway` | Stores attempts and grading results |
 | Secret Manager | Various | OAuth credentials and API keys |
 

@@ -26,7 +26,7 @@ We have **3 separate deployments**:
    - **Auth**: Service account key in `GCP_SA_KEY` secret
    - **Status**: ⚠️ Needs verification
 
-3. **send_scenario_email** (Cloud Function Gen 2)
+3. **start_scenario** (Cloud Function Gen 2)
    - **Target**: GCP Cloud Functions
    - **Trigger**: HTTP (called by portal)
    - **Deploy method**: GitHub Actions using service account
