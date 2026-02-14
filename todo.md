@@ -34,11 +34,10 @@
   - Likely a Vite `base` config or Firebase Auth `actionCodeSettings.url` mismatch
   - Need to check: `portal/vite.config.ts`, `portal/src/auth.ts`, Firebase console authorized domains
 
-### P1 — CI pipeline doesn't run integration tests (~15 min)
-- [ ] **Update CI workflow for test runner SA**
-  - Add `test-runner-key.secret.json` content as GitHub secret `GCP_TEST_SA_KEY`
-  - Update `deploy-service.yaml` to use `GCP_TEST_SA_KEY` for the integration test step
-  - Separate deploy auth (peb-service-account) from test auth (peb-test-runner)
+### P1 — CI pipeline needs new GitHub secret (~5 min)
+- [ ] **Update `GCP_DEPLOYER_KEY` GitHub secret**
+  - Add contents of `deployer-key.secret.json` as GitHub secret `GCP_DEPLOYER_KEY`
+  - Can remove old `GCP_SA_KEY` secret after verifying
 
 ### P2 — Validate E2E grading flow (~10 min)
 - [ ] **Run full E2E integration test locally** (`test_e2e_grading.py`)
@@ -62,8 +61,7 @@
     you also need `roles/datastore.owner`. The `(default)` database just works with `roles/datastore.user`.
   - Would require updating: `service/main.py`, all integration tests, `_local_test.py`
   - Risk: data migration needed (or recreate in new DB)
-- [ ] **Tighten runtime SA permissions** — replace `roles/editor` on `687061619628-compute@...`
-  with specific roles (`secretmanager.secretAccessor`, `datastore.user`, `pubsub.subscriber`)
-- [ ] **Remove unused App Engine SA** — `pathway-email-bot-6543@appspot.gserviceaccount.com`
-  has `roles/editor` but isn't used by anything
+- [x] ~~**Tighten runtime SA permissions**~~ — created `peb-runtime` with least-privilege roles (2026-02-14)
+- [x] ~~**Remove unused App Engine SA editor role**~~ — removed `roles/editor` (2026-02-14)
+- [x] ~~**Rename SAs for clarity**~~ — `peb-deployer` (was `peb-service-account`), `peb-runtime` (was default compute SA) (2026-02-14)
 - [ ] **Browser-based sign-in test** (playwright) — automate login flow verification

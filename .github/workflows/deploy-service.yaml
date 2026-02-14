@@ -40,11 +40,11 @@ jobs:
       - name: Run unit tests
         run: python -m pytest tests/unit/ -v
 
-      - name: Google Auth
+      - name: Auth as deployer
         id: auth
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          credentials_json: '${{ secrets.GCP_DEPLOYER_KEY }}'
 
       - name: Deploy process_email to Cloud Functions (Gen 2)
         run: |
@@ -55,7 +55,8 @@ jobs:
             --source=service \
             --entry-point=process_email \
             --trigger-topic=${{ env.TOPIC_NAME }} \
-            --memory=512Mi
+            --memory=512Mi \
+            --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com
 
       - name: Deploy send_scenario_email to Cloud Functions (Gen 2)
         run: |
@@ -66,12 +67,13 @@ jobs:
             --source=service \
             --entry-point=send_scenario_email \
             --trigger-http \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com
 
       - name: Auth as test runner (SA impersonation)
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          credentials_json: '${{ secrets.GCP_DEPLOYER_KEY }}'
           service_account: 'peb-test-runner@pathway-email-bot-6543.iam.gserviceaccount.com'
 
       - name: Run integration tests (post-deploy)

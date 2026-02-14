@@ -31,15 +31,14 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 
 *Last audited: 2026-02-14*
 
-| Service Account | Purpose | Roles | Key file / used by |
+| Service Account | Purpose | Roles | Key / Auth |
 |---|---|---|---|
-| `peb-service-account@…` | **CI/CD deploy** — deploys Cloud Functions from GitHub Actions | `cloudfunctions.developer`, `run.admin`, `artifactregistry.writer`, `iam.serviceAccountUser`, `logging.logWriter`, `pubsub.editor`, `pubsub.subscriber` | `key.secret.json` / GitHub secret `GCP_SA_KEY` |
+| `peb-deployer@…` | **CI/CD deploy** — deploys Cloud Functions from GitHub Actions | `cloudfunctions.developer`, `run.admin`, `artifactregistry.writer`, `iam.serviceAccountUser`, `logging.logWriter`, `pubsub.editor`, `pubsub.subscriber` | `deployer-key.secret.json` / GitHub secret `GCP_DEPLOYER_KEY` |
 | `peb-test-runner@…` | **Integration tests** — used by both CI and local dev | `secretmanager.secretAccessor`, `datastore.user`, `datastore.owner`*, `cloudfunctions.viewer` | `test-runner-key.secret.json` (local) / SA impersonation (CI) |
-| `687061619628-compute@…` | **Cloud Function runtime** — identity both functions run as | `roles/editor` ⚠️ overly broad (see todo.md) | Automatic (GCP metadata server) |
-| `…@appspot.gserviceaccount.com` | App Engine default (auto-created, **unused**) | `roles/editor` | — |
+| `peb-runtime@…` | **Cloud Function runtime** — identity both functions run as | `secretmanager.secretAccessor`, `datastore.user`, `datastore.owner`* | Automatic (GCP metadata server) |
 | `firebase-adminsdk-fbsvc@…` | Firebase Admin SDK agent (**Google-managed, do not modify**) | `firebase.sdkAdminServiceAgent`, `firebaseauth.admin`, `iam.serviceAccountTokenCreator` | — |
 
-\* `datastore.owner` is required because the `pathway` database is a named database (not `(default)`). `datastore.user` alone is insufficient for named databases — this is a GCP IAM quirk. See todo.md for migration consideration.
+\* `datastore.owner` is required because the `pathway` database is a named database (not `(default)`). `datastore.user` alone is insufficient — GCP IAM quirk. See todo.md.
 
 ### Credential Discovery (ADC)
 
@@ -47,9 +46,9 @@ Google client libraries check credentials in order: `GOOGLE_APPLICATION_CREDENTI
 
 | Environment | Identity | How |
 |---|---|---|
-| **Cloud Functions** | `687061619628-compute@…` | Metadata server (automatic) |
-| **GitHub Actions — deploy** | `peb-service-account@…` | `google-github-actions/auth` sets env var |
-| **GitHub Actions — tests** | `peb-test-runner@…` | Deploy SA impersonates via `serviceAccountTokenCreator` |
+| **Cloud Functions** | `peb-runtime@…` | Metadata server (automatic) |
+| **GitHub Actions — deploy** | `peb-deployer@…` | `google-github-actions/auth` sets env var |
+| **GitHub Actions — tests** | `peb-test-runner@…` | `peb-deployer` impersonates via `serviceAccountTokenCreator` |
 | **Local — tests** | `peb-test-runner@…` | `tests/conftest.py` auto-discovers `test-runner-key.secret.json` |
 
 ## Firestore Database
