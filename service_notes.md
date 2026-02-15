@@ -11,7 +11,7 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 | **Pub/Sub Topic** | `email-notifications` | Receives Gmail push notifications |
 | **Pub/Sub Subscription** | `eventarc-us-central1-process-email-479061-sub-493` | Eventarc-managed, triggers Cloud Function |
 | **Cloud Function** | `process_email` | Core AI logic and email handler (**512Mi memory required**) |
-| **Cloud Function** | `start_scenario` | HTTP endpoint for starting scenarios |
+| **Cloud Function** | `start_scenario` | HTTP endpoint for starting scenarios (**512Mi memory required** — reply scenarios use OpenAI) |
 | **Firestore Database** | `pathway` | Stores user attempts, active scenarios, and grading results |
 | **Service Account** | `687061619628-compute@developer.gserviceaccount.com` | Default Compute SA used by functions |
 | **AI Model** | `gpt-4o` (OpenAI) | LLM for grading and responses |
@@ -178,9 +178,12 @@ Use `setup_infra.ps1` to create the project, enable APIs, and configure the serv
 ```powershell
 # Deploy process_email (must include --memory=512Mi)
 gcloud functions deploy process_email --gen2 --region=us-central1 --runtime=python311 --source=service --entry-point=process_email --trigger-topic=email-notifications --memory=512Mi --project=pathway-email-bot-6543
+
+# Deploy start_scenario (also needs 512Mi — reply scenarios load OpenAI)
+gcloud functions deploy start_scenario --gen2 --region=us-central1 --runtime=python311 --source=service --entry-point=start_scenario --trigger-http --allow-unauthenticated --memory=512Mi --project=pathway-email-bot-6543
 ```
 
-> **Note**: Default memory (256Mi) causes OOM — the OpenAI SDK + Gmail API + Firebase Admin + Secret Manager require ~300-400 MiB at runtime.
+> **Note**: Default memory (256Mi) causes OOM — the OpenAI SDK + Gmail API + Firebase Admin + Secret Manager require ~300-400 MiB at runtime. Both functions need `--set-secrets` for OPENAI_API_KEY, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN (configured in `deploy-service.yaml`).
 
 ## Local Development
 
