@@ -25,7 +25,7 @@ TEST_EMAIL = "michaeltreynolds.test@gmail.com"
 BOT_EMAIL = "pathwayemailbot@gmail.com"
 SCENARIO_ID = "missed_remote_standup"
 POLL_INTERVAL = 5
-POLL_TIMEOUT = 120
+POLL_TIMEOUT = 60
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
