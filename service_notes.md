@@ -33,7 +33,7 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 
 | Service Account | Purpose | Roles | Key / Auth |
 |---|---|---|---|
-| `peb-deployer@…` | **CI/CD deploy** — deploys Cloud Functions from GitHub Actions | `cloudfunctions.developer`, `run.admin`, `artifactregistry.writer`, `iam.serviceAccountUser`, `logging.logWriter`, `pubsub.editor`, `pubsub.subscriber` | `deployer-key.secret.json` / GitHub secret `GCP_DEPLOYER_KEY` |
+| `peb-deployer@…` | **CI/CD deploy** — deploys Cloud Functions and Firestore rules from GitHub Actions | `cloudfunctions.developer`, `run.admin`, `artifactregistry.writer`, `iam.serviceAccountUser`, `logging.logWriter`, `pubsub.editor`, `pubsub.subscriber`, `serviceusage.serviceUsageConsumer`, `firebaserules.admin` | `deployer-key.secret.json` / GitHub secret `GCP_DEPLOYER_KEY` |
 | `peb-test-runner@…` | **Integration tests** — used by both CI and local dev | `secretmanager.secretAccessor`, `datastore.user`, `datastore.owner`*, `cloudfunctions.viewer` | `test-runner-key.secret.json` (local) / SA impersonation (CI) |
 | `peb-runtime@…` | **Cloud Function runtime** — identity both functions run as | `secretmanager.secretAccessor`, `datastore.user`, `datastore.owner`* | Automatic (GCP metadata server) |
 | `firebase-adminsdk-fbsvc@…` | Firebase Admin SDK agent (**Google-managed, do not modify**) | `firebase.sdkAdminServiceAgent`, `firebaseauth.admin`, `iam.serviceAccountTokenCreator` | — |

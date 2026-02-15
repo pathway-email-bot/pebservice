@@ -27,7 +27,7 @@ jobs:
       - name: Auth to GCP
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          credentials_json: '${{ secrets.GCP_DEPLOYER_KEY }}'
 
       - name: Deploy Firestore rules
         run: npx -y firebase-tools deploy --only firestore:rules --project $PROJECT_ID
