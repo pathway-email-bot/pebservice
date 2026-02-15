@@ -14,7 +14,7 @@ import type { User } from 'firebase/auth';
 // Global state
 let currentScenarios: ScenarioMetadata[] = [];
 let activeScenarioId: string | null = null;
-let activeAttemptId: string | null = null;
+
 let attemptUnsubscribe: (() => void) | null = null;
 let attemptsUnsubscribe: (() => void) | null = null;
 
@@ -137,7 +137,7 @@ function loadAttemptHistory(): void {
     const pendingAttempt = attempts.find(a => a.status === 'pending');
     if (pendingAttempt && !activeScenarioId) {
       activeScenarioId = pendingAttempt.scenarioId;
-      activeAttemptId = pendingAttempt.id;
+
 
       // Re-attach listener for this specific attempt
       if (attemptUnsubscribe) attemptUnsubscribe();
@@ -220,7 +220,7 @@ async function handleStartScenario(e: Event): Promise<void> {
     // Call start_scenario Cloud Function (creates attempt + sends email for REPLY)
     const result = await startScenario(scenarioId);
     activeScenarioId = scenarioId;
-    activeAttemptId = result.attemptId;
+
 
     // Expand this scenario card and show instructions
     rerenderScenarios();
