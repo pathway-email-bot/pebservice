@@ -2,21 +2,17 @@
 """
 Gmail Token Generator for PEB Service.
 
-This script:
-1. Runs OAuth flow to get a fresh Gmail refresh token
-2. Stores the token in GCP Secret Manager (source of truth) with metadata
-3. Syncs the token to GitHub Secrets
-4. Updates local token file
+Runs the OAuth flow and stores the refresh token in GCP Secret Manager
+(the single source of truth). No local files are created.
 
 Usage:
-    python get_token.py              # Interactive - will prompt which account
-    python get_token.py --bot        # Refresh bot token (pathwayemailbot@gmail.com)
-    python get_token.py --personal   # Refresh personal token (michaeltreynolds@gmail.com)
-    python get_token.py --test       # Refresh test token (michaeltreynolds.test@gmail.com)
+    python scripts/get_token.py              # Interactive prompt
+    python scripts/get_token.py --bot        # Bot account (pathwayemailbot@gmail.com)
+    python scripts/get_token.py --test       # Test account (michaeltreynolds.test@gmail.com)
 
-The bot token is used by the Cloud Function to read/send emails.
-The personal token is used locally for sending test emails.
-The test token is used for automated testing scenarios.
+Prerequisites:
+    - client_config.secret.json in repo root (run setup_dev.py first)
+    - gcloud CLI authenticated
 """
 
 import os
@@ -35,25 +31,16 @@ SCOPES = [
     'https://www.googleapis.com/auth/gmail.settings.basic'
 ]
 
-# Account mapping
 ACCOUNTS = {
     "bot": {
         "email": "pathwayemailbot@gmail.com",
         "description": "Bot Gmail account (used by Cloud Function)",
         "gcp_secret": "gmail-refresh-token-bot",
-        "github_secret": "GMAIL_REFRESH_TOKEN",  # This is what the CF uses
-    },
-    "personal": {
-        "email": "michaeltreynolds@gmail.com",
-        "description": "Personal account (for manual testing)",
-        "gcp_secret": "gmail-refresh-token-personal",
-        "github_secret": None,  # Not synced to GitHub
     },
     "test": {
         "email": "michaeltreynolds.test@gmail.com",
         "description": "Test account (for automated testing)",
         "gcp_secret": "gmail-refresh-token-test",
-        "github_secret": None,  # Not synced to GitHub
     },
 }
 
@@ -64,29 +51,16 @@ def print_header(msg: str):
     print(f"{'='*60}")
 
 
-def print_account_warning(role: str):
-    """Clearly indicate which account to sign in with."""
-    info = ACCOUNTS.get(role, {})
-    email = info.get("email", "unknown")
-    desc = info.get("description", "")
-    
-    print(f"\n{'!'*60}")
-    print(f"  SIGN IN WITH: {email}")
-    print(f"  Purpose: {desc}")
-    print(f"{'!'*60}")
-    print("\nBrowser will open automatically...")
-
-
 def run_oauth_flow() -> str | None:
     """Run OAuth flow and return refresh token."""
     if not os.path.exists(CLIENT_CONFIG_FILE):
         print(f"[ERROR] {CLIENT_CONFIG_FILE} not found.")
-        print("Run: python sync_secrets.py")
+        print("Run: python scripts/setup_dev.py")
         return None
-    
+
     flow = InstalledAppFlow.from_client_secrets_file(CLIENT_CONFIG_FILE, SCOPES)
     creds = flow.run_local_server(port=0, prompt='consent')
-    
+
     if creds and creds.refresh_token:
         return creds.refresh_token
     else:
@@ -97,28 +71,24 @@ def run_oauth_flow() -> str | None:
 def store_in_gcp(secret_name: str, value: str, role: str) -> bool:
     """Store token in GCP Secret Manager with metadata."""
     print(f"\n[GCP] Storing in Secret Manager: {secret_name}")
-    
-    # Create metadata payload
+
     metadata = {
         "refresh_token": value,
         "generated_at": datetime.now().isoformat(),
         "role": role,
         "email": ACCOUNTS[role]["email"],
-        # Gmail refresh tokens don't expire unless revoked, but we track generation time
-        "notes": "Gmail refresh tokens have no fixed expiry - valid until revoked"
     }
-    
+
     payload = json.dumps(metadata)
-    
+
     try:
         # Check if secret exists
         result = subprocess.run(
             f'gcloud secrets describe "{secret_name}" 2>nul',
             capture_output=True, text=True, shell=True
         )
-        
+
         if result.returncode != 0:
-            # Create new secret
             print(f"  Creating new secret: {secret_name}")
             result = subprocess.run(
                 f'gcloud secrets create "{secret_name}" --replication-policy=automatic',
@@ -127,111 +97,71 @@ def store_in_gcp(secret_name: str, value: str, role: str) -> bool:
             if result.returncode != 0:
                 print(f"[ERROR] Failed to create secret: {result.stderr}")
                 return False
-        
+
         # Add new version
         result = subprocess.run(
             f'gcloud secrets versions add "{secret_name}" --data-file=-',
             input=payload, capture_output=True, text=True, shell=True
         )
-        
+
         if result.returncode == 0:
             print(f"[OK] Stored in GCP Secret Manager")
             return True
         else:
             print(f"[ERROR] Failed to add version: {result.stderr}")
             return False
-            
+
     except Exception as e:
         print(f"[ERROR] {e}")
         return False
 
 
-def sync_to_github(secret_name: str, value: str) -> bool:
-    """Sync token to GitHub Secrets."""
-    print(f"\n[GitHub] Syncing to: {secret_name}")
-    
-    try:
-        result = subprocess.run(
-            ["gh", "secret", "set", secret_name, "--body", value],
-            capture_output=True, text=True
-        )
-        
-        if result.returncode == 0:
-            print(f"[OK] Synced to GitHub Secrets")
-            return True
-        else:
-            print(f"[ERROR] {result.stderr}")
-            return False
-    except FileNotFoundError:
-        print("[ERROR] gh CLI not installed")
-        return False
-
-
-# Local file storage removed — Secret Manager is the single source of truth.
-# See implementation_plan.md for rationale.
-
-
 def main():
-    # Determine which role
     if "--bot" in sys.argv:
         role = "bot"
-    elif "--personal" in sys.argv:
-        role = "personal"
     elif "--test" in sys.argv:
         role = "test"
     else:
         print_header("Gmail Token Generator")
         print("\nWhich account do you want to refresh?\n")
         print("  1. pathwayemailbot@gmail.com (bot - for Cloud Function)")
-        print("  2. michaeltreynolds@gmail.com (personal - for testing)")
-        print("  3. michaeltreynolds.test@gmail.com (test - for automated testing)")
+        print("  2. michaeltreynolds.test@gmail.com (test - for automated testing)")
         print()
-        choice = input("Enter 1, 2, or 3: ").strip()
-        if choice == "1":
-            role = "bot"
-        elif choice == "2":
-            role = "personal"
-        else:
-            role = "test"
-    
+        choice = input("Enter 1 or 2: ").strip()
+        role = "bot" if choice == "1" else "test"
+
     info = ACCOUNTS[role]
-    
+
     print_header(f"Refreshing Token: {role}")
     print(f"  Account: {info['email']}")
-    print(f"  GCP Secret: {info['gcp_secret']}")
-    print(f"  GitHub Secret: {info['github_secret'] or 'N/A'}")
-    
+    print(f"  Secret:  {info['gcp_secret']}")
+
     # Step 1: OAuth Flow
-    print_account_warning(role)
+    print(f"\n{'!'*60}")
+    print(f"  SIGN IN WITH: {info['email']}")
+    print(f"  Purpose: {info['description']}")
+    print(f"{'!'*60}")
+    print("\nBrowser will open automatically...")
+
     refresh_token = run_oauth_flow()
-    
+
     if not refresh_token:
         print("\n[FAIL] Could not obtain refresh token")
         return 1
-    
+
     print(f"\n[OK] Got refresh token: {refresh_token[:20]}...")
-    
-    # Step 2: Store in GCP (source of truth)
+
+    # Step 2: Store in Secret Manager (single source of truth)
     if not store_in_gcp(info['gcp_secret'], refresh_token, role):
-        print("[WARN] Failed to store in GCP, continuing...")
-    
-    # Step 3: Sync to GitHub (if applicable)
-    if info['github_secret']:
-        if not sync_to_github(info['github_secret'], refresh_token):
-            print("[WARN] Failed to sync to GitHub, continuing...")
-    
+        print("[ERROR] Failed to store in Secret Manager!")
+        return 1
+
     # Summary
     print_header("Complete")
     print(f"  Token for: {info['email']}")
     print(f"  Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"  GCP Secret Manager: {info['gcp_secret']}")
-    if info['github_secret']:
-        print(f"  GitHub: {info['github_secret']}")
-    
-    if role == "bot":
-        print("\n[NOTE] GitHub was updated. A new deployment will start automatically.")
-        print("Run 'python wait_for_deploy.py' to monitor the deployment.")
-    
+    print(f"  Secret Manager: {info['gcp_secret']}")
+
     return 0
 
 

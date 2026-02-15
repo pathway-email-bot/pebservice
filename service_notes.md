@@ -188,11 +188,8 @@ gcloud functions deploy process_email --gen2 --region=us-central1 --runtime=pyth
 
 | Script | Purpose |
 |---|---|
+| `setup_dev.py` | One-stop dev setup: creates venv, installs deps, generates `client_config.secret.json` from SM, downloads test-runner SA key |
 | `get_token.py` | Interactive OAuth flow → stores refresh token in Secret Manager (single source of truth) |
-| `sync_secrets.py` | Syncs secrets from GCP Secret Manager to local `client_config.secret.json` and optionally GitHub |
-| `setup_gcloud.ps1` | One-time GCP project setup (APIs, service accounts) |
-| `setup_infra.ps1` | One-time infrastructure setup (Pub/Sub, Cloud Functions) |
-| `setup_venv.ps1` | Python venv setup for local development |
 
 ### Secret Files
 - **Naming Convention**: All files containing secrets must follow the pattern `*.secret.*` (e.g., `client_config.secret.json`, `test-runner-key.secret.json`).
