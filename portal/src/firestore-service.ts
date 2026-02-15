@@ -96,7 +96,10 @@ export function listenToAttempts(callback: (attempts: Attempt[]) => void): () =>
                 gradedAt: data.gradedAt?.toDate(),
             };
         });
+        console.info(`[Firestore] Loaded ${attempts.length} attempts`);
         callback(attempts);
+    }, (error) => {
+        console.error('[Firestore] listenToAttempts error:', error);
     });
 }
 
@@ -151,6 +154,7 @@ export function listenToAttempt(attemptId: string, callback: (attempt: Attempt |
     return onSnapshot(attemptRef, (snapshot) => {
         if (snapshot.exists()) {
             const data = snapshot.data();
+            console.info(`[Firestore] Attempt ${attemptId} status: ${data.status}`);
             callback({
                 id: snapshot.id,
                 scenarioId: data.scenarioId,
@@ -162,8 +166,11 @@ export function listenToAttempt(attemptId: string, callback: (attempt: Attempt |
                 gradedAt: data.gradedAt?.toDate(),
             });
         } else {
+            console.warn(`[Firestore] Attempt ${attemptId} not found`);
             callback(null);
         }
+    }, (error) => {
+        console.error(`[Firestore] listenToAttempt(${attemptId}) error:`, error);
     });
 }
 

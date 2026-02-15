@@ -626,9 +626,9 @@ def start_scenario(request: Request):
         
         # For REPLY scenarios, send the starter email from the bot
         if scenario.interaction_type == 'reply':
-            email_agent = EmailAgent()
-            starter_thread = email_agent.build_starter_thread(scenario)
-            starter_message = starter_thread.messages[0]
+            email_agent = EmailAgent(scenario=scenario)
+            starter_thread = email_agent.build_starter_thread()
+            starter_message = starter_thread[0]
             
             from_name = scenario.starter_sender_name
             subject = f"[PEB:{scenario_id}] {scenario.starter_subject}"
