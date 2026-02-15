@@ -64,7 +64,8 @@ jobs:
             --entry-point=process_email \
             --trigger-topic=${{ env.TOPIC_NAME }} \
             --memory=512Mi \
-            --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com
+            --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com \
+            --set-secrets=OPENAI_API_KEY=openai-api-key:latest,GMAIL_CLIENT_ID=gmail-client-id:latest,GMAIL_CLIENT_SECRET=gmail-client-secret:latest,GMAIL_REFRESH_TOKEN=gmail-refresh-token-bot:latest
 
       - name: Deploy start_scenario to Cloud Functions (Gen 2)
         run: |
@@ -76,7 +77,8 @@ jobs:
             --entry-point=start_scenario \
             --trigger-http \
             --allow-unauthenticated \
-            --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com
+            --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com \
+            --set-secrets=OPENAI_API_KEY=openai-api-key:latest,GMAIL_CLIENT_ID=gmail-client-id:latest,GMAIL_CLIENT_SECRET=gmail-client-secret:latest,GMAIL_REFRESH_TOKEN=gmail-refresh-token-bot:latest
 
       - name: Auth as test runner (post-deploy)
         uses: google-github-actions/auth@v2
