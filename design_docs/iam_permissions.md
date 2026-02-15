@@ -45,6 +45,22 @@ gcloud secrets add-iam-policy-binding openai-api-key \
 
 **Status**: ✅ Configured (2026-02-06)
 
+#### Pub/Sub → Cloud Run Invoker
+The Pub/Sub service agent needs `run.invoker` on the `process-email` Cloud Run service so push subscriptions can trigger the function:
+
+```bash
+gcloud run services add-iam-policy-binding process-email \
+  --region=us-central1 \
+  --member="serviceAccount:service-687061619628@gcp-sa-pubsub.iam.gserviceaccount.com" \
+  --role="roles/run.invoker"
+```
+
+> [!CAUTION]
+> This binding can be silently dropped when redeploying functions or changing SA roles.
+> If `process_email` stops processing emails, check this binding first.
+
+**Status**: ✅ Configured (2026-02-14)
+
 #### Deployment Service Account Permissions
 The deployment service account needs permissions to deploy Cloud Functions Gen 2:
 

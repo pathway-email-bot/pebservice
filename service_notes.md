@@ -37,8 +37,12 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 | `peb-test-runner@…` | **Integration tests** — used by both CI and local dev | `secretmanager.secretAccessor`, `datastore.user`, `datastore.owner`*, `cloudfunctions.viewer` | `test-runner-key.secret.json` (local) / SA impersonation (CI) |
 | `peb-runtime@…` | **Cloud Function runtime** — identity both functions run as | `secretmanager.secretAccessor`, `datastore.user`, `datastore.owner`* | Automatic (GCP metadata server) |
 | `firebase-adminsdk-fbsvc@…` | Firebase Admin SDK agent (**Google-managed, do not modify**) | `firebase.sdkAdminServiceAgent`, `firebaseauth.admin`, `iam.serviceAccountTokenCreator` | — |
+| `service-687061619628@gcp-sa-pubsub.iam.gserviceaccount.com` | **Pub/Sub service agent** — invokes `process-email` Cloud Run service | `run.invoker` on `process-email` service | — (Google-managed) |
 
 \* `datastore.owner` is required because the `pathway` database is a named database (not `(default)`). `datastore.user` alone is insufficient — GCP IAM quirk. See todo.md.
+
+> [!CAUTION]
+> The Pub/Sub service agent's `run.invoker` binding can be **silently dropped** when redeploying functions or changing SA roles. If `process_email` stops processing emails, check this binding first.
 
 ### Credential Discovery (ADC)
 
@@ -86,7 +90,7 @@ users/{email}/
 
 ### Usage
 
-- **Portal**: Creates attempts when user clicks "Start" on a scenario
+- **start_scenario**: Creates attempts when user clicks "Start" on a scenario
 - **process_email**: Queries active scenario to match incoming emails, updates with grading results
 - **Portal**: Displays grading results in drawer after email exchange
 
