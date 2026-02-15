@@ -204,12 +204,19 @@ async function handleStartScenario(e: Event): Promise<void> {
   const scenario = currentScenarios.find(s => s.id === scenarioId);
   if (!scenario) return;
 
+  // Measure clicked card's viewport position BEFORE DOM rebuild
+  const cardBefore = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"]`);
+  const cardTopBefore = cardBefore?.getBoundingClientRect().top ?? 0;
+
   // Immediately open drawer in loading state
   activeScenarioId = scenarioId;
   isDrawerLoading = true;
-  const scrollY = window.scrollY; // save scroll position before DOM rebuild
   rerenderScenarios();
-  window.scrollTo(0, scrollY); // restore — prevents any jump
+
+  // Anchor scroll: keep the card at the same viewport position
+  const cardAfter = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"]`);
+  const cardTopAfter = cardAfter?.getBoundingClientRect().top ?? 0;
+  window.scrollBy(0, cardTopAfter - cardTopBefore);
 
   try {
     // Call start_scenario Cloud Function (creates attempt + sends email for REPLY)
