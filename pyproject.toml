@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+# Ensures pytest always finds tests/conftest.py (credential auto-discovery)
+# regardless of which directory you run pytest from.
+testpaths = ["tests"]
