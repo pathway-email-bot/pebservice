@@ -405,7 +405,7 @@ form .btn-primary {
 .shimmer-block {
   background: linear-gradient(90deg, #f0ebe4 25%, #e8e0d4 50%, #f0ebe4 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
+  animation: shimmer 2.5s ease-in-out infinite;
   border-radius: var(--radius-sm);
 }
 
@@ -424,19 +424,36 @@ form .btn-primary {
   margin-top: var(--spacing-lg);
   padding-top: var(--spacing-lg);
   border-top: 2px solid var(--color-border);
-  animation: slideDown 0.3s ease-out;
+  animation: drawerExpand 0.5s ease-out;
+  overflow: hidden;
 }
 
-.drawer-header {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: var(--spacing-sm);
-}
-
-@keyframes slideDown {
+/* Smooth expand animation */
+@keyframes drawerExpand {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    max-height: 0;
+    padding-top: 0;
+    margin-top: 0;
+  }
+
+  to {
+    opacity: 1;
+    max-height: 500px;
+    padding-top: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+  }
+}
+
+/* Fade-in for real content replacing shimmer */
+.drawer-content-loaded {
+  animation: fadeInContent 0.6s ease-out;
+}
+
+@keyframes fadeInContent {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
 
   to {

@@ -463,27 +463,29 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
             <div class="shimmer-block" style="height: 4em; width: 100%; margin-bottom: 16px;"></div>
             <div class="shimmer-block" style="height: 2em; width: 70%;"></div>
           ` : `
-            <div class="task-section">
-              <h4>📝 Your Task</h4>
-              <p>${scenario.student_task}</p>
-            </div>
-            
-            <div class="instructions-section">
-              <h4>📬 Instructions</h4>
-              ${scenario.interaction_type === 'initiate' ? `
-                <div class="copy-email-row">
-                  <p style="margin-bottom:0"><strong>Send an email to:</strong> <code>pathwayemailbot@gmail.com</code></p>
-                  <button class="copy-email-btn" data-email="pathwayemailbot@gmail.com" type="button">📋 Copy</button>
-                </div>
-                <p>Compose and send your email from your email client. You'll receive feedback automatically.</p>
-              ` : `
-                <p><strong>Check your email inbox</strong> for a message from the bot.</p>
-                <p>Reply to that email with your response. You'll receive feedback automatically.</p>
-              `}
-            </div>
-            
-            <div class="status-section">
-              <p class="pending-status">🤗 You're all set! Compose your best email and send it to pathwayemailbot@gmail.com — we'll be here when it arrives 💛</p>
+            <div class="drawer-content-loaded">
+              <div class="task-section">
+                <h4>📝 Your Task</h4>
+                <p>${scenario.student_task}</p>
+              </div>
+              
+              <div class="instructions-section">
+                <h4>📬 Instructions</h4>
+                ${scenario.interaction_type === 'initiate' ? `
+                  <div class="copy-email-row">
+                    <p style="margin-bottom:0"><strong>Send an email to:</strong> <code>pathwayemailbot@gmail.com</code></p>
+                    <button class="copy-email-btn" data-email="pathwayemailbot@gmail.com" type="button">📋 Copy</button>
+                  </div>
+                  <p>Compose and send your email from your email client. You'll receive feedback automatically.</p>
+                ` : `
+                  <p><strong>Check your email inbox</strong> for a message from the bot.</p>
+                  <p>Reply to that email with your response. You'll receive feedback automatically.</p>
+                `}
+              </div>
+              
+              <div class="status-section">
+                <p class="pending-status">🤗 You're all set! Compose your best email and send it to pathwayemailbot@gmail.com — we'll be here when it arrives 💛</p>
+              </div>
             </div>
           `}
         </div>
