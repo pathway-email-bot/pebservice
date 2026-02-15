@@ -426,8 +426,8 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
           <p class="scenario-role"><strong>Counterpart:</strong> ${scenario.counterpart_role}</p>
         </div>
         ${!isActive ? `
+          ${scoreIndicator}
           <div class="scenario-actions">
-            ${scoreIndicator}
             <div class="error-message" style="display: none;"></div>
             <button class="btn btn-primary start-btn" data-scenario-id="${scenario.id}">
               Start
