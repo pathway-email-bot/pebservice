@@ -217,15 +217,33 @@ async function handleStartScenario(e: Event): Promise<void> {
     isDrawerLoading = false;
     rerenderScenarios();
 
-    // Set up Firestore listener for grading results
-    if (attemptUnsubscribe) {
-      attemptUnsubscribe();
-    }
-    attemptUnsubscribe = listenToAttempt(result.attemptId, (attempt) => {
-      if (attempt && attempt.status === 'graded') {
-        updateScenarioWithGrading(scenarioId, attempt);
+    // Set up grading listener
+    if (import.meta.env.DEV && result.attemptId.startsWith('mock-')) {
+      // DEV mock: simulate grading after 3 seconds
+      console.info('[DEV MOCK] Simulating grading in 3 seconds...');
+      setTimeout(() => {
+        updateScenarioWithGrading(scenarioId, {
+          id: result.attemptId,
+          scenarioId,
+          status: 'graded',
+          startedAt: new Date(),
+          score: 22,
+          maxScore: 25,
+          feedback: '[DEV MOCK] Great email! Clear subject line, professional tone, and well-structured content.',
+          gradedAt: new Date(),
+        });
+      }, 3000);
+    } else {
+      // Production: Firestore listener for real grading results
+      if (attemptUnsubscribe) {
+        attemptUnsubscribe();
       }
-    });
+      attemptUnsubscribe = listenToAttempt(result.attemptId, (attempt) => {
+        if (attempt && attempt.status === 'graded') {
+          updateScenarioWithGrading(scenarioId, attempt);
+        }
+      });
+    }
 
   } catch (error) {
     console.error('Error starting scenario:', error);

@@ -82,8 +82,21 @@ export async function listScenarios(): Promise<ScenarioMetadata[]> {
 /**
  * Start a scenario — creates the attempt server-side and
  * sends the starter email for REPLY scenarios.
+ * 
+ * In DEV mode (localhost), returns a mock response to bypass CORS.
  */
 export async function startScenario(scenarioId: string): Promise<StartScenarioResponse> {
+  // DEV mock — Vite strips this from production builds
+  if (import.meta.env.DEV) {
+    console.info(`[DEV MOCK] startScenario("${scenarioId}") — returning mock response`);
+    await new Promise(r => setTimeout(r, 1500)); // simulate API latency
+    return {
+      success: true,
+      attemptId: `mock-attempt-${Date.now()}`,
+      message: '[DEV] Mock scenario started',
+    };
+  }
+
   const user = auth.currentUser;
   if (!user) {
     throw new Error('User not authenticated');
