@@ -406,16 +406,32 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
   const isActive = isExpanded;
   const scoreIndicator = getScoreIndicator(scenario.id);
 
-  // Determine score badge content for active drawer
-  let scoreBadgeHtml = 'Score pending<span class="dots"></span>';
-  const attempts = attemptsByScenario.get(scenario.id);
-  if (attempts) {
-    const activeAttempt = attempts.find(a => a.id === activeAttemptId && a.status === 'graded');
-    if (activeAttempt) {
-      scoreBadgeHtml = `⭐ Score: ${activeAttempt.score}/${activeAttempt.maxScore}`;
-    }
+  // Build the score column for the card header (works for both active and inactive)
+  let headerScoreHtml = scoreIndicator; // default: graded score badges for inactive
+  if (isActive && !scoreIndicator) {
+    // Active with no prior graded score — show pending
+    headerScoreHtml = `
+      <div class="score-indicator-row">
+        <span class="score-badge">Score pending<span class="dots"></span></span>
+      </div>
+    `;
+  } else if (isActive && scoreIndicator) {
+    // Active with prior scores — show score + pending note  
+    headerScoreHtml = `
+      <div class="score-indicator-row">
+        <span class="score-badge">Score pending<span class="dots"></span></span>
+      </div>
+    `;
   }
-  const scoreBadgeClass = scoreBadgeHtml.startsWith('⭐') ? 'score-badge scored' : 'score-badge';
+
+  // Build previous attempts link for active cards
+  const prevAttemptsLink = (() => {
+    const atts = attemptsByScenario.get(scenario.id);
+    if (!atts) return '';
+    const gradedCount = atts.filter(a => a.status === 'graded').length;
+    if (gradedCount === 0) return '';
+    return `<a href="#" class="prev-attempts-link" data-scenario-id="${scenario.id}">(${gradedCount} previous)</a>`;
+  })();
 
   return `
     <div class="scenario-card ${isActive ? 'active' : ''}" data-scenario-id="${scenario.id}">
@@ -433,14 +449,16 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
               Start
             </button>
           </div>
-        ` : ''}
+        ` : `
+          <div class="score-indicator-row">
+            ${headerScoreHtml}
+            ${prevAttemptsLink}
+          </div>
+        `}
       </div>
       
       ${isActive ? `
         <div class="scenario-drawer">
-          <div class="drawer-header">
-            <span class="${scoreBadgeClass}">${scoreBadgeHtml}</span>
-          </div>
 
           <div class="task-section">
             <h4>📝 Your Task</h4>
