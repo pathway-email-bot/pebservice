@@ -424,24 +424,20 @@ form .btn-primary {
   margin-top: var(--spacing-lg);
   padding-top: var(--spacing-lg);
   border-top: 2px solid var(--color-border);
-  animation: drawerExpand 0.5s ease-out;
-  overflow: hidden;
+  animation: drawerSlideDown 0.4s ease-out;
+  transform-origin: top;
 }
 
-/* Smooth expand animation */
-@keyframes drawerExpand {
+/* Smooth downward expand — no max-height shift */
+@keyframes drawerSlideDown {
   from {
     opacity: 0;
-    max-height: 0;
-    padding-top: 0;
-    margin-top: 0;
+    transform: translateY(-8px);
   }
 
   to {
     opacity: 1;
-    max-height: 500px;
-    padding-top: var(--spacing-lg);
-    margin-top: var(--spacing-lg);
+    transform: translateY(0);
   }
 }
 

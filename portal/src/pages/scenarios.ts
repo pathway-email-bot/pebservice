@@ -209,6 +209,10 @@ async function handleStartScenario(e: Event): Promise<void> {
   isDrawerLoading = true;
   rerenderScenarios();
 
+  // Anchor scroll to the clicked card so focus stays in place
+  const activeCard = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"]`);
+  activeCard?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
   try {
     // Call start_scenario Cloud Function (creates attempt + sends email for REPLY)
     const result = await startScenario(scenarioId);
