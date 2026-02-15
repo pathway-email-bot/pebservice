@@ -12,5 +12,9 @@ google-auth-oauthlib==1.*
 google-auth-httplib2==0.*
 google-api-python-client==2.*
 
-# Browser automation for sign-in integration tests
+# HTTP requests for API integration tests
+requests
+
+# Browser automation for portal integration tests
 playwright
+pytest-playwright
