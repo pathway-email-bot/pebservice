@@ -1,8 +1,13 @@
 """
-End-to-end integration test: full grading pipeline.
+Integration test: full grading pipeline against the DEPLOYED system.
 
-Creates a Firestore attempt → sends a real email to the bot → polls Firestore
-until the attempt is graded. Verifies score, feedback, and status.
+Exercises the real end-to-end flow as a user would experience it:
+  1. Creates a Firestore attempt (setup)
+  2. Sends a real email to the bot
+  3. The deployed Cloud Function processes and grades the email
+  4. Polls Firestore until the attempt is graded
+
+This test only makes sense after deployment — it validates the live system.
 
 Credentials:
   - Locally: reads from client_config.secret.json + token.test.secret.json

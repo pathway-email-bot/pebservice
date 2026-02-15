@@ -40,6 +40,14 @@ jobs:
       - name: Run unit tests
         run: python -m pytest tests/unit/ -v
 
+      - name: Auth as test runner (pre-deploy)
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_TEST_SA_KEY }}'
+
+      - name: Run local tests (pre-deploy)
+        run: python -m pytest tests/local/ -v --timeout=30
+
       - name: Auth as deployer
         id: auth
         uses: google-github-actions/auth@v2
@@ -70,7 +78,7 @@ jobs:
             --allow-unauthenticated \
             --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com
 
-      - name: Auth as test runner
+      - name: Auth as test runner (post-deploy)
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GCP_TEST_SA_KEY }}'

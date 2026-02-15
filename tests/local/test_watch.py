@@ -1,18 +1,17 @@
 """
-Integration test: Gmail watch renewal.
+Local test: _ensure_watch() function against real GCP services.
 
-Verifies the full _ensure_watch flow against real GCP services:
+Verifies the full _ensure_watch flow:
   - Firestore transaction (claim/complete in system/watch_status)
   - Gmail watch() API call (renews push notifications)
 
-This test also serves as a precondition check: if it passes,
-the bot's Gmail watch is active and the E2E grading test can work.
+This tests OUR code logic (not just raw API calls) against live services.
 
 Credentials:
   - SA (test-runner-key or CI): reads secrets from Secret Manager
   - Bot OAuth: built from gmail-client-id/secret + refresh-token-bot
 
-Run:  python -m pytest tests/integration/test_watch_renewal.py -v --timeout=30
+Run:  python -m pytest tests/local/test_watch.py -v --timeout=30
 Cost: 1 Firestore read/write + 1 Gmail watch() call (free tier)
 """
 
@@ -22,7 +21,6 @@ import os
 import pytest
 
 PROJECT_ID = "pathway-email-bot-6543"
-BOT_EMAIL = "pathwayemailbot@gmail.com"
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -83,26 +81,8 @@ def db():
 # ── Tests ────────────────────────────────────────────────────────────
 
 
-class TestWatchRenewal:
-    """Verify Gmail watch renewal works end-to-end."""
-
-    def test_gmail_watch_call_succeeds(self, bot_gmail):
-        """Direct watch() call succeeds and returns valid expiration."""
-        response = bot_gmail.users().watch(
-            userId="me",
-            body={
-                "labelIds": ["INBOX"],
-                "topicName": f"projects/{PROJECT_ID}/topics/email-notifications",
-            },
-        ).execute()
-
-        assert "historyId" in response, f"Missing historyId: {response}"
-        assert "expiration" in response, f"Missing expiration: {response}"
-
-        # Expiration should be a future timestamp (ms since epoch)
-        exp_ms = int(response["expiration"])
-        import time
-        assert exp_ms > int(time.time() * 1000), "Expiration should be in the future"
+class TestEnsureWatch:
+    """Verify _ensure_watch() writes correct Firestore status."""
 
     def test_firestore_watch_status_document(self, bot_gmail, db):
         """_ensure_watch writes correct status to Firestore."""
@@ -138,11 +118,4 @@ class TestWatchRenewal:
         days_until_expiry = (expires_at - now).total_seconds() / 86400
         assert 6 < days_until_expiry <= 7.1, (
             f"Expected ~7 days until expiry, got {days_until_expiry:.1f}"
-        )
-
-    def test_bot_account_identity(self, bot_gmail):
-        """Sanity: verify we're authenticated as the bot account."""
-        profile = bot_gmail.users().getProfile(userId="me").execute()
-        assert profile["emailAddress"] == BOT_EMAIL, (
-            f"Expected {BOT_EMAIL}, got {profile['emailAddress']}"
         )

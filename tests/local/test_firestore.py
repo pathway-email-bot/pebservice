@@ -1,5 +1,5 @@
 """
-Integration test: Firestore read/write on the 'pathway' database.
+Local test: Firestore read/write on the 'pathway' database.
 
 Creates a test attempt, reads it back, updates it, and cleans up. Uses a
 dedicated test path so real user data is never touched.
@@ -7,7 +7,7 @@ dedicated test path so real user data is never touched.
 Works both locally (via `gcloud auth application-default login`) and in
 CI (via the GCP_SA_KEY service account).
 
-Run: python -m pytest tests/integration/test_firestore.py -v
+Run: python -m pytest tests/local/test_firestore.py -v
 """
 
 import os

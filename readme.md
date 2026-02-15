@@ -115,7 +115,8 @@ pebservice/
 │   └── sync_secrets.py       # Secret synchronization (GCP → local/GitHub)
 ├── tests/                    # Test suite
 │   ├── unit/                 # Pure logic tests (fully mocked)
-│   └── integration/          # Tests against real GCP services
+│   ├── local/                # Tests against real GCP services (pre-deploy)
+│   └── integration/          # Tests against deployed system (post-deploy)
 ├── design_docs/              # Architecture & planning documents
 ├── .github/workflows/        # CI/CD pipelines
 │   ├── deploy-service.yaml   # Service deployment
@@ -229,7 +230,10 @@ python scripts/sync_secrets.py --list
 # Unit tests (no GCP access needed)
 python -m pytest tests/unit/ -v
 
-# Integration tests (requires GCP auth via gcloud)
+# Local tests — credential/connectivity checks against real GCP services
+python -m pytest tests/local/ -v --timeout=30
+
+# Integration tests — exercises the deployed system end-to-end
 python -m pytest tests/integration/ -v --timeout=180
 ```
 
