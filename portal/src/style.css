@@ -394,6 +394,13 @@ form .btn-primary {
   padding: var(--spacing-sm) var(--spacing-lg);
 }
 
+.scenario-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-shrink: 0;
+}
+
 /* Drawer UI */
 .scenario-drawer {
   margin-top: var(--spacing-lg);
@@ -550,8 +557,9 @@ form .btn-primary {
 /* Score indicators on scenario cards (list view) */
 .score-indicator-row {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: 2px;
   margin-bottom: var(--spacing-xs);
 }
 
