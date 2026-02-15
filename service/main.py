@@ -58,8 +58,8 @@ except ValueError:
 # Constants - Path resolution
 # Note: email_agent/ directory structure is preserved in Cloud Functions deployment
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_SCENARIO_PATH = BASE_DIR / "email_agent/scenarios/missed_remote_standup.json"
 DEFAULT_RUBRIC_PATH = BASE_DIR / "email_agent/rubrics/default.json"
+BOT_EMAIL = "pathwayemailbot@gmail.com"
 
 # Canary log to verify logging is working in Cloud Functions
 logger.info("PEB Service module loaded. Logging is operational.")
@@ -635,7 +635,7 @@ def start_scenario(request: Request):
             body = starter_message.content
             
             raw_message = _build_mime_message(
-                from_addr='pathwayemailbot@gmail.com',
+                from_addr=BOT_EMAIL,
                 from_name=from_name,
                 to_addr=student_email,
                 subject=subject,

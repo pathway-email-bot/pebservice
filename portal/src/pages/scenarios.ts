@@ -83,6 +83,27 @@ async function renderAuthenticatedView(container: HTMLElement, user: User): Prom
 
   // Add start button handlers
   attachScenarioHandlers();
+
+  // Dev preview mode: ?preview in URL auto-activates first scenario
+  // so you can see active state styling locally without calling Cloud Function
+  // Gated behind import.meta.env.DEV — Vite strips this from production builds
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('preview')) {
+    const previewMode = new URLSearchParams(window.location.search).get('preview') || 'default';
+    activeScenarioId = currentScenarios[0]?.id ?? null;
+    rerenderScenarios();
+    console.info(`[DEV] Preview mode: "${previewMode}"`);
+
+    // Named preview modes
+    if (previewMode === 'score_arrives') {
+      setTimeout(() => {
+        const badge = document.querySelector('.score-badge');
+        if (badge) {
+          badge.classList.add('scored');
+          badge.innerHTML = '⭐ Score: 22/25 — Great work!';
+        }
+      }, 3000);
+    }
+  }
 }
 
 function attachScenarioHandlers(): void {
@@ -90,6 +111,38 @@ function attachScenarioHandlers(): void {
   document.querySelectorAll('.start-btn').forEach(btn => {
     btn.addEventListener('click', handleStartScenario);
   });
+
+  // Copy email button handlers
+  document.querySelectorAll('.copy-email-btn').forEach(btn => {
+    btn.addEventListener('click', handleCopyEmail);
+  });
+}
+
+async function handleCopyEmail(e: Event): Promise<void> {
+  const button = e.target as HTMLButtonElement;
+  const email = button.dataset.email;
+  if (!email) return;
+
+  try {
+    await navigator.clipboard.writeText(email);
+    button.classList.add('copied');
+    button.textContent = '✅ Copied!';
+    setTimeout(() => {
+      button.classList.remove('copied');
+      button.textContent = '📋 Copy';
+    }, 1500);
+  } catch (err) {
+    console.warn('Clipboard copy failed:', err);
+    // Fallback: select the text in the code element
+    const codeEl = button.closest('.copy-email-row')?.querySelector('code');
+    if (codeEl) {
+      const range = document.createRange();
+      range.selectNodeContents(codeEl);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+  }
 }
 
 async function handleStartScenario(e: Event): Promise<void> {
@@ -151,6 +204,13 @@ function rerenderScenarios(): void {
     .map(scenario => renderScenarioCard(scenario, scenario.id === activeScenarioId))
     .join('');
 
+  // Toggle dim styling on inactive cards
+  if (activeScenarioId) {
+    listContainer.classList.add('has-active');
+  } else {
+    listContainer.classList.remove('has-active');
+  }
+
   // Reattach event handlers
   attachScenarioHandlers();
 }
@@ -161,6 +221,20 @@ function updateScenarioWithGrading(scenarioId: string, attempt: Attempt): void {
 
   const drawer = card.querySelector('.scenario-drawer');
   if (!drawer) return;
+
+  // Update score badge with real score
+  const badge = card.querySelector('.score-badge');
+  if (badge) {
+    badge.classList.add('scored');
+    badge.innerHTML = `⭐ Score: ${attempt.score}/${attempt.maxScore}`;
+  }
+
+  // Update status message
+  const pendingStatus = drawer.querySelector('.pending-status');
+  if (pendingStatus) {
+    pendingStatus.className = 'success-status';
+    pendingStatus.textContent = '✅ Your email has been graded!';
+  }
 
   // Find or create grading section
   let gradingSection = drawer.querySelector('.grading-results');
@@ -208,6 +282,10 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
       
       ${isActive ? `
         <div class="scenario-drawer">
+          <div class="drawer-header">
+            <span class="score-badge">Score pending<span class="dots"></span></span>
+          </div>
+
           <div class="task-section">
             <h4>📝 Your Task</h4>
             <p>${scenario.student_task}</p>
@@ -216,7 +294,10 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
           <div class="instructions-section">
             <h4>📬 Instructions</h4>
             ${scenario.interaction_type === 'initiate' ? `
-              <p><strong>Send an email to:</strong> <code>pathwayemailbot@gmail.com</code></p>
+              <div class="copy-email-row">
+                <p style="margin-bottom:0"><strong>Send an email to:</strong> <code>pathwayemailbot@gmail.com</code></p>
+                <button class="copy-email-btn" data-email="pathwayemailbot@gmail.com" type="button">📋 Copy</button>
+              </div>
               <p>Compose and send your email from your email client. You'll receive feedback automatically.</p>
             ` : `
               <p><strong>Check your email inbox</strong> for a message from the bot.</p>
@@ -225,7 +306,7 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
           </div>
           
           <div class="status-section">
-            <p class="pending-status">⏳ Waiting for your email...</p>
+            <p class="pending-status">🤗 You're all set! Compose your best email and send it to pathwayemailbot@gmail.com — we'll be here when it arrives 💛</p>
           </div>
         </div>
       ` : ''}
