@@ -8,17 +8,13 @@ Exercises the real end-to-end flow as a user would experience it:
   4. Polls Firestore until the attempt is graded
 
 This test only makes sense after deployment — it validates the live system.
-
-Credentials:
-  - Locally: reads from client_config.secret.json + token.test.secret.json
-  - In CI: reads from Secret Manager (gmail-client-config, gmail-test-token)
+Credentials are read from Secret Manager via tests/helpers/gmail_helpers.py.
 
 Run:  python -m pytest tests/integration/test_e2e_grading.py -v --timeout=180
 Cost: ~$0.01 per run (1 OpenAI API call)
 """
 
 import base64
-import json
 import os
 import time
 import uuid
@@ -36,52 +32,7 @@ POLL_TIMEOUT = 60
 # ── Helpers ──────────────────────────────────────────────────────────
 
 
-def _get_secret(name: str) -> str:
-    """Read a secret from Secret Manager."""
-    from google.cloud import secretmanager
-
-    client = secretmanager.SecretManagerServiceClient()
-    full_name = f"projects/{PROJECT_ID}/secrets/{name}/versions/latest"
-    response = client.access_secret_version(request={"name": full_name})
-    return response.payload.data.decode("UTF-8").strip()
-
-
-def _read_local_file(path: str) -> dict:
-    """Read a JSON file relative to the repo root."""
-    repo_root = os.path.join(os.path.dirname(__file__), "..", "..")
-    full = os.path.join(repo_root, path)
-    if os.path.exists(full):
-        with open(full) as f:
-            return json.load(f)
-    return None
-
-
-def _get_gmail_credentials():
-    """Get Gmail OAuth credentials — try local files first, then Secret Manager."""
-    from google.oauth2.credentials import Credentials
-
-    # Local files (developer machine)
-    cfg_data = _read_local_file("client_config.secret.json")
-    tok_data = _read_local_file("token.test.secret.json")
-
-    if cfg_data and tok_data:
-        cfg = cfg_data.get("installed") or cfg_data.get("web")
-        return Credentials(
-            None,
-            refresh_token=tok_data["refresh_token"],
-            token_uri="https://oauth2.googleapis.com/token",
-            client_id=cfg["client_id"],
-            client_secret=cfg["client_secret"],
-        )
-
-    # Fall back to individual secrets from Secret Manager (CI)
-    return Credentials(
-        None,
-        refresh_token=_get_secret("gmail-refresh-token-test"),
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=_get_secret("gmail-client-id"),
-        client_secret=_get_secret("gmail-client-secret"),
-    )
+# Gmail credentials are provided via shared helper (reads from Secret Manager)
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────
@@ -105,10 +56,9 @@ def db():
 @pytest.fixture(scope="module")
 def gmail():
     """Authenticated Gmail API service for the test account."""
-    from googleapiclient.discovery import build
+    from tests.helpers.gmail_helpers import get_test_gmail_service
 
-    creds = _get_gmail_credentials()
-    return build("gmail", "v1", credentials=creds)
+    return get_test_gmail_service()
 
 
 # ── Test ─────────────────────────────────────────────────────────────

@@ -42,21 +42,18 @@ ACCOUNTS = {
         "description": "Bot Gmail account (used by Cloud Function)",
         "gcp_secret": "gmail-refresh-token-bot",
         "github_secret": "GMAIL_REFRESH_TOKEN",  # This is what the CF uses
-        "local_file": "token.bot.secret.json",
     },
     "personal": {
         "email": "michaeltreynolds@gmail.com",
-        "description": "Personal account (for testing)",
+        "description": "Personal account (for manual testing)",
         "gcp_secret": "gmail-refresh-token-personal",
         "github_secret": None,  # Not synced to GitHub
-        "local_file": "token.personal.secret.json",
     },
     "test": {
         "email": "michaeltreynolds.test@gmail.com",
         "description": "Test account (for automated testing)",
         "gcp_secret": "gmail-refresh-token-test",
         "github_secret": None,  # Not synced to GitHub
-        "local_file": "token.test.secret.json",
     },
 }
 
@@ -170,25 +167,8 @@ def sync_to_github(secret_name: str, value: str) -> bool:
         return False
 
 
-def save_local(filename: str, value: str, role: str) -> bool:
-    """Save token to local file with metadata."""
-    print(f"\n[Local] Saving to: {filename}")
-    
-    data = {
-        "refresh_token": value,
-        "generated_at": datetime.now().isoformat(),
-        "role": role,
-        "email": ACCOUNTS[role]["email"],
-    }
-    
-    try:
-        with open(filename, 'w') as f:
-            json.dump(data, f, indent=2)
-        print(f"[OK] Saved locally")
-        return True
-    except Exception as e:
-        print(f"[ERROR] {e}")
-        return False
+# Local file storage removed — Secret Manager is the single source of truth.
+# See implementation_plan.md for rationale.
 
 
 def main():
@@ -220,7 +200,6 @@ def main():
     print(f"  Account: {info['email']}")
     print(f"  GCP Secret: {info['gcp_secret']}")
     print(f"  GitHub Secret: {info['github_secret'] or 'N/A'}")
-    print(f"  Local File: {info['local_file']}")
     
     # Step 1: OAuth Flow
     print_account_warning(role)
@@ -241,17 +220,13 @@ def main():
         if not sync_to_github(info['github_secret'], refresh_token):
             print("[WARN] Failed to sync to GitHub, continuing...")
     
-    # Step 4: Save locally
-    save_local(info['local_file'], refresh_token, role)
-    
     # Summary
     print_header("Complete")
     print(f"  Token for: {info['email']}")
     print(f"  Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"  GCP: {info['gcp_secret']}")
+    print(f"  GCP Secret Manager: {info['gcp_secret']}")
     if info['github_secret']:
         print(f"  GitHub: {info['github_secret']}")
-    print(f"  Local: {info['local_file']}")
     
     if role == "bot":
         print("\n[NOTE] GitHub was updated. A new deployment will start automatically.")

@@ -188,15 +188,15 @@ gcloud functions deploy process_email --gen2 --region=us-central1 --runtime=pyth
 
 | Script | Purpose |
 |---|---|
-| `auth_utils.py` | Shared OAuth utility — builds Gmail credentials from local token files |
-| `get_token.py` | Interactive OAuth flow → stores refresh token in Secret Manager + local file |
+| `get_token.py` | Interactive OAuth flow → stores refresh token in Secret Manager (single source of truth) |
 | `sync_secrets.py` | Syncs secrets from GCP Secret Manager to local `client_config.secret.json` and optionally GitHub |
 | `setup_gcloud.ps1` | One-time GCP project setup (APIs, service accounts) |
 | `setup_infra.ps1` | One-time infrastructure setup (Pub/Sub, Cloud Functions) |
 | `setup_venv.ps1` | Python venv setup for local development |
 
-### Secret Management
-- **Naming Convention**: All files containing secrets must follow the pattern `*.secret.*` (e.g., `client_config.secret.json`, `token.bot.secret.json`).
+### Secret Files
+- **Naming Convention**: All files containing secrets must follow the pattern `*.secret.*` (e.g., `client_config.secret.json`, `test-runner-key.secret.json`).
 - **Git**: These files are globally ignored by `.gitignore`.
-- **Token files**: `token.bot.secret.json` and `token.test.secret.json` live in the repo root.
+- **OAuth tokens**: Stored exclusively in Secret Manager — no local token files. Use `get_token.py` to regenerate.
+- **`client_config.secret.json`**: Generated locally by `sync_secrets.py` from SM (needed only to run `get_token.py`'s OAuth flow).
 

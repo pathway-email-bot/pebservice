@@ -27,47 +27,22 @@ def _get_secret(name: str) -> str:
     return response.payload.data.decode("UTF-8").strip()
 
 
-def _read_local_file(path: str) -> dict | None:
-    """Read a JSON file relative to the repo root."""
-    repo_root = os.path.join(os.path.dirname(__file__), "..", "..")
-    full = os.path.join(repo_root, path)
-    if os.path.exists(full):
-        with open(full) as f:
-            return json.load(f)
-    return None
-
-
 def get_test_gmail_service():
     """
     Get Gmail API service for the TEST account (michaeltreynolds.test@gmail.com).
 
-    Tries local files first, then falls back to Secret Manager (CI).
+    Always reads credentials from Secret Manager (single source of truth).
     """
     from google.oauth2.credentials import Credentials
     from googleapiclient.discovery import build
 
-    # Local files (developer machine)
-    cfg_data = _read_local_file("client_config.secret.json")
-    tok_data = _read_local_file("token.test.secret.json")
-
-    if cfg_data and tok_data:
-        cfg = cfg_data.get("installed") or cfg_data.get("web")
-        creds = Credentials(
-            None,
-            refresh_token=tok_data["refresh_token"],
-            token_uri="https://oauth2.googleapis.com/token",
-            client_id=cfg["client_id"],
-            client_secret=cfg["client_secret"],
-        )
-    else:
-        # Fall back to Secret Manager (CI)
-        creds = Credentials(
-            None,
-            refresh_token=_get_secret("gmail-refresh-token-test"),
-            token_uri="https://oauth2.googleapis.com/token",
-            client_id=_get_secret("gmail-client-id"),
-            client_secret=_get_secret("gmail-client-secret"),
-        )
+    creds = Credentials(
+        None,
+        refresh_token=_get_secret("gmail-refresh-token-test"),
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=_get_secret("gmail-client-id"),
+        client_secret=_get_secret("gmail-client-secret"),
+    )
 
     return build("gmail", "v1", credentials=creds)
 

@@ -43,7 +43,7 @@
 ### P2 — Validate E2E grading flow (~10 min)
 - [ ] **Run full E2E integration test locally** (`test_e2e_grading.py`)
   - Sends real email → polls Firestore for grading → asserts score/feedback
-  - Needs `client_config.secret.json` + `token.test.secret.json` present
+  - Reads credentials from Secret Manager (requires `test-runner-key.secret.json` for SM access)
   - Cost: ~$0.01 per run (OpenAI API call)
 
 ### P3 — Verify full pipeline end-to-end (~20 min)
