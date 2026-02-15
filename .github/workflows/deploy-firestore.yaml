@@ -1,0 +1,33 @@
+name: Deploy Firestore Rules
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'firestore.rules'
+      - 'firebase.json'
+      - '.github/workflows/deploy-firestore.yaml'
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: 'pathway-email-bot-6543'
+
+jobs:
+  deploy-rules:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Deploy Firestore rules
+        run: npx -y firebase-tools deploy --only firestore:rules --project $PROJECT_ID
