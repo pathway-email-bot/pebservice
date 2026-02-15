@@ -626,13 +626,9 @@ def start_scenario(request: Request):
         # For REPLY scenarios, send the starter email BEFORE creating the attempt.
         # This way a failed email send won't leave a stale "pending" attempt.
         if scenario.interaction_type == 'reply':
-            email_agent = EmailAgent(scenario=scenario)
-            starter_thread = email_agent.build_starter_thread()
-            starter_message = starter_thread[0]
-            
             from_name = scenario.starter_sender_name
             subject = f"[PEB:{scenario_id}] {scenario.starter_subject}"
-            body = starter_message.content
+            body = scenario.starter_email_body
             
             raw_message = _build_mime_message(
                 from_addr=BOT_EMAIL,
