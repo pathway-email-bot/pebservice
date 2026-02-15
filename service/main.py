@@ -49,6 +49,10 @@ from .logging_utils import log_function
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Strip whitespace from secrets injected via --set-secrets (can have trailing \r\n)
+if os.environ.get('OPENAI_API_KEY'):
+    os.environ['OPENAI_API_KEY'] = os.environ['OPENAI_API_KEY'].strip()
+
 # Initialize Firebase Admin (only once, shared by both functions)
 try:
     firebase_admin.get_app()
