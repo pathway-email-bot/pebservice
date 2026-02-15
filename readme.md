@@ -42,55 +42,81 @@ Integrate Pathway Email Bot into your curriculum to help students:
 
 ```mermaid
 graph TB
-    Student[👤 Student] -->|1. Sends email| Gmail[📧 Gmail API<br/>pathwayemailbot@gmail.com]
-    Portal[🌐 Student Portal<br/>GitHub Pages] -->|Manages scenarios| Firestore[(🗄️ Firestore)]
+    Student[👤 Student] -->|magic link sign-in| Portal[🌐 Student Portal<br/>GitHub Pages]
+    Portal -->|POST /start_scenario| StartFunc[⚡ start_scenario<br/>HTTP Cloud Function]
+    StartFunc -->|creates attempt| Firestore[(🗄️ Firestore)]
+    StartFunc -->|sends starter email<br/>for REPLY scenarios| Gmail[📧 Gmail<br/>pathwayemailbot@gmail.com]
     
-    Gmail -->|2. Push notification| PubSub[📬 Pub/Sub Topic<br/>email-notifications]
-    PubSub -->|3. Triggers| CloudFunc[⚡ Cloud Function<br/>process_email]
+    Student -->|sends email| Gmail
+    Gmail -->|push notification| PubSub[📬 Pub/Sub]
+    PubSub -->|triggers| ProcessFunc[⚡ process_email<br/>Event Cloud Function]
     
-    CloudFunc -->|4a. Queries active scenario| Firestore
-    CloudFunc -->|4b. Grades email| OpenAI[🤖 OpenAI GPT-4o]
-    CloudFunc -->|5. Sends feedback| Gmail
-    CloudFunc -->|6. Stores results| Firestore
+    ProcessFunc -->|queries active scenario| Firestore
+    ProcessFunc -->|grades email| OpenAI[🤖 OpenAI GPT-4o]
+    ProcessFunc -->|sends feedback reply| Gmail
+    ProcessFunc -->|stores score + feedback| Firestore
     
-    Portal -->|Displays results| Student
+    Portal -->|reads attempts| Firestore
+    Portal -->|displays results| Student
+    Student -->|authenticates| FireAuth[🔑 Firebase Auth]
     
     style Student fill:#e1f5ff
     style Portal fill:#fff4e1
     style Gmail fill:#ea4335
     style PubSub fill:#4285f4
-    style CloudFunc fill:#34a853
+    style StartFunc fill:#34a853
+    style ProcessFunc fill:#34a853
     style Firestore fill:#fbbc04
     style OpenAI fill:#10a37f
+    style FireAuth fill:#ff9800
 ```
 
-### Data Flow
+### Student Journey (End-to-End)
 
 ```mermaid
 sequenceDiagram
-    participant S as Student
-    participant P as Portal
-    participant F as Firestore
-    participant G as Gmail
-    participant PS as Pub/Sub
-    participant CF as Cloud Function
-    participant AI as OpenAI
+    participant S as 👤 Student
+    participant P as 🌐 Portal
+    participant FA as 🔑 Firebase Auth
+    participant SF as ⚡ start_scenario
+    participant F as 🗄️ Firestore
+    participant G as 📧 Gmail
+    participant PS as 📬 Pub/Sub
+    participant PE as ⚡ process_email
+    participant AI as 🤖 OpenAI
 
-    S->>P: 1. Start scenario
-    P->>F: 2. Create attempt record
-    P->>S: 3. Display scenario prompt
-    S->>G: 4. Send email to bot
-    G->>PS: 5. Push notification
-    PS->>CF: 6. Trigger function
-    CF->>F: 7. Query active scenario
-    CF->>AI: 8. Grade email
-    AI-->>CF: 9. Return feedback
-    CF->>G: 10. Send reply email
-    CF->>F: 11. Store score & feedback
-    S->>P: 12. View results
-    P->>F: 13. Fetch attempt data
-    F-->>P: 14. Return results
-    P->>S: 15. Display feedback
+    Note over S,P: Sign In
+    S->>P: Enter email address
+    P->>FA: Send magic link email
+    FA->>G: Magic link email
+    G-->>S: Receives magic link
+    S->>P: Click magic link
+    P->>FA: Complete sign-in
+    FA-->>P: Authenticated user
+
+    Note over S,SF: Start Scenario
+    S->>P: Choose scenario
+    P->>SF: POST /start_scenario
+    SF->>F: Create attempt (status: pending)
+    SF->>G: Send starter email (REPLY scenarios)
+    SF-->>P: { attemptId, success }
+    P->>S: Display scenario prompt
+
+    Note over S,AI: Email & Grading
+    S->>G: Send email to bot
+    G->>PS: Push notification
+    PS->>PE: Trigger function
+    PE->>F: Look up active scenario
+    PE->>AI: Grade email against rubric
+    AI-->>PE: Score + feedback
+    PE->>G: Send feedback reply email
+    PE->>F: Store score + feedback (status: graded)
+
+    Note over S,P: View Results
+    S->>P: Check results
+    P->>F: Fetch attempt data
+    F-->>P: Score, feedback, status
+    P->>S: Display grade + feedback
 ```
 
 ### Repository Structure
