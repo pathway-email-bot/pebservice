@@ -1,6 +1,6 @@
 {
   "name": "Clarify Multi-Step Process",
-  "interaction_type": "initiate",
+  "interaction_type": "reply",
   "description": "New remote administrative assistant receives instructions for a multi-step process and needs to ask for clarification on a few parts.",
   "environment": "remote_workplace",
   "counterpart_role": "Operations lead",

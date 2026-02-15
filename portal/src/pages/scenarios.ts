@@ -3,17 +3,23 @@
  * 
  * Displays the list of available email practice scenarios with drawer-based UX.
  * Scenarios are loaded from bundled static files (fetched at build time from service).
+ * Attempt history is loaded from Firestore to show score badges and restore active state.
  */
 
 import { logout, getCurrentUser } from '../auth';
 import { listScenarios, startScenario, type ScenarioMetadata } from '../scenarios-api';
-import { listenToAttempt, type Attempt } from '../firestore-service';
+import { listenToAttempt, listenToAttempts, type Attempt } from '../firestore-service';
 import type { User } from 'firebase/auth';
 
 // Global state
 let currentScenarios: ScenarioMetadata[] = [];
 let activeScenarioId: string | null = null;
+let activeAttemptId: string | null = null;
 let attemptUnsubscribe: (() => void) | null = null;
+let attemptsUnsubscribe: (() => void) | null = null;
+
+// Attempts grouped by scenario: scenarioId -> Attempt[] (sorted newest first)
+let attemptsByScenario: Map<string, Attempt[]> = new Map();
 
 export async function renderScenariosPage(container: HTMLElement): Promise<void> {
   // main.ts handles auth routing — if we're here, user should be logged in
@@ -77,12 +83,17 @@ async function renderAuthenticatedView(container: HTMLElement, user: User): Prom
 
   // Add logout handler
   document.getElementById('logout-btn')?.addEventListener('click', async () => {
+    // Clean up listeners before logout
+    if (attemptUnsubscribe) attemptUnsubscribe();
+    if (attemptsUnsubscribe) attemptsUnsubscribe();
     await logout();
-    // Auth listener in main.ts will automatically show login page
   });
 
   // Add start button handlers
   attachScenarioHandlers();
+
+  // Load attempt history from Firestore and restore active state
+  loadAttemptHistory();
 
   // Dev preview mode: ?preview in URL auto-activates first scenario
   // so you can see active state styling locally without calling Cloud Function
@@ -106,6 +117,42 @@ async function renderAuthenticatedView(container: HTMLElement, user: User): Prom
   }
 }
 
+/**
+ * Load all attempts from Firestore, group by scenario, and restore active state.
+ * Sets up a real-time listener so score badges update live.
+ */
+function loadAttemptHistory(): void {
+  if (attemptsUnsubscribe) attemptsUnsubscribe();
+
+  attemptsUnsubscribe = listenToAttempts((attempts) => {
+    // Group attempts by scenario
+    attemptsByScenario = new Map();
+    for (const attempt of attempts) {
+      const existing = attemptsByScenario.get(attempt.scenarioId) || [];
+      existing.push(attempt);
+      attemptsByScenario.set(attempt.scenarioId, existing);
+    }
+
+    // Check for any active (pending) attempt and restore state
+    const pendingAttempt = attempts.find(a => a.status === 'pending');
+    if (pendingAttempt && !activeScenarioId) {
+      activeScenarioId = pendingAttempt.scenarioId;
+      activeAttemptId = pendingAttempt.id;
+
+      // Re-attach listener for this specific attempt
+      if (attemptUnsubscribe) attemptUnsubscribe();
+      attemptUnsubscribe = listenToAttempt(pendingAttempt.id, (attempt) => {
+        if (attempt && attempt.status === 'graded') {
+          updateScenarioWithGrading(pendingAttempt.scenarioId, attempt);
+        }
+      });
+    }
+
+    // Re-render to show score badges and restore active state
+    rerenderScenarios();
+  });
+}
+
 function attachScenarioHandlers(): void {
   // Start button handlers
   document.querySelectorAll('.start-btn').forEach(btn => {
@@ -115,6 +162,11 @@ function attachScenarioHandlers(): void {
   // Copy email button handlers
   document.querySelectorAll('.copy-email-btn').forEach(btn => {
     btn.addEventListener('click', handleCopyEmail);
+  });
+
+  // Previous attempts link handlers
+  document.querySelectorAll('.prev-attempts-link').forEach(link => {
+    link.addEventListener('click', handleShowPreviousAttempts);
   });
 }
 
@@ -168,6 +220,7 @@ async function handleStartScenario(e: Event): Promise<void> {
     // Call start_scenario Cloud Function (creates attempt + sends email for REPLY)
     const result = await startScenario(scenarioId);
     activeScenarioId = scenarioId;
+    activeAttemptId = result.attemptId;
 
     // Expand this scenario card and show instructions
     rerenderScenarios();
@@ -259,8 +312,110 @@ function updateScenarioWithGrading(scenarioId: string, attempt: Attempt): void {
     `;
 }
 
+/**
+ * Get score indicator for a scenario based on latest attempt
+ */
+function getScoreIndicator(scenarioId: string): string {
+  const attempts = attemptsByScenario.get(scenarioId);
+  if (!attempts || attempts.length === 0) return '';
+
+  // Find latest graded attempt
+  const latestGraded = attempts.find(a => a.status === 'graded');
+  if (!latestGraded) {
+    // Has attempts but none graded — show pending indicator
+    const pending = attempts.find(a => a.status === 'pending');
+    if (pending) return '<span class="score-indicator pending" title="In progress">⏳</span>';
+    return '';
+  }
+
+  const score = latestGraded.score ?? 0;
+  const maxScore = latestGraded.maxScore ?? 25;
+  let colorClass: string;
+  if (score >= 20) colorClass = 'green';
+  else if (score >= 12) colorClass = 'yellow';
+  else colorClass = 'red';
+
+  const attemptCount = attempts.filter(a => a.status === 'graded').length;
+  const prevLink = attemptCount > 1
+    ? `<a href="#" class="prev-attempts-link" data-scenario-id="${scenarioId}">(${attemptCount - 1} previous)</a>`
+    : '';
+
+  return `
+    <div class="score-indicator-row">
+      <span class="score-indicator ${colorClass}" title="${score}/${maxScore}">
+        ${score}/${maxScore}
+      </span>
+      ${prevLink}
+    </div>
+  `;
+}
+
+function handleShowPreviousAttempts(e: Event): void {
+  e.preventDefault();
+  const scenarioId = (e.target as HTMLElement).dataset.scenarioId;
+  if (!scenarioId) return;
+
+  const attempts = attemptsByScenario.get(scenarioId);
+  if (!attempts) return;
+
+  const gradedAttempts = attempts.filter(a => a.status === 'graded');
+  const scenario = currentScenarios.find(s => s.id === scenarioId);
+
+  // Build modal
+  const modal = document.createElement('div');
+  modal.className = 'attempts-modal-overlay';
+  modal.innerHTML = `
+    <div class="attempts-modal">
+      <div class="attempts-modal-header">
+        <h3>📊 Previous Attempts — ${scenario?.name || scenarioId}</h3>
+        <button class="attempts-modal-close">&times;</button>
+      </div>
+      <div class="attempts-modal-body">
+        ${gradedAttempts.map((a, i) => {
+    const score = a.score ?? 0;
+    const maxScore = a.maxScore ?? 25;
+    let colorClass: string;
+    if (score >= 20) colorClass = 'green';
+    else if (score >= 12) colorClass = 'yellow';
+    else colorClass = 'red';
+
+    return `
+            <div class="attempt-row">
+              <div class="attempt-info">
+                <span class="attempt-number">#${gradedAttempts.length - i}</span>
+                <span class="attempt-date">${a.gradedAt?.toLocaleDateString() || 'Unknown'}</span>
+              </div>
+              <span class="score-indicator ${colorClass}">${score}/${maxScore}</span>
+            </div>
+          `;
+  }).join('')}
+      </div>
+    </div>
+  `;
+
+  // Close handlers
+  modal.querySelector('.attempts-modal-close')?.addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+
+  document.body.appendChild(modal);
+}
+
 function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): string {
   const isActive = isExpanded;
+  const scoreIndicator = getScoreIndicator(scenario.id);
+
+  // Determine score badge content for active drawer
+  let scoreBadgeHtml = 'Score pending<span class="dots"></span>';
+  const attempts = attemptsByScenario.get(scenario.id);
+  if (attempts) {
+    const activeAttempt = attempts.find(a => a.id === activeAttemptId && a.status === 'graded');
+    if (activeAttempt) {
+      scoreBadgeHtml = `⭐ Score: ${activeAttempt.score}/${activeAttempt.maxScore}`;
+    }
+  }
+  const scoreBadgeClass = scoreBadgeHtml.startsWith('⭐') ? 'score-badge scored' : 'score-badge';
 
   return `
     <div class="scenario-card ${isActive ? 'active' : ''}" data-scenario-id="${scenario.id}">
@@ -272,6 +427,7 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
         </div>
         ${!isActive ? `
           <div class="scenario-actions">
+            ${scoreIndicator}
             <div class="error-message" style="display: none;"></div>
             <button class="btn btn-primary start-btn" data-scenario-id="${scenario.id}">
               Start
@@ -283,7 +439,7 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
       ${isActive ? `
         <div class="scenario-drawer">
           <div class="drawer-header">
-            <span class="score-badge">Score pending<span class="dots"></span></span>
+            <span class="${scoreBadgeClass}">${scoreBadgeHtml}</span>
           </div>
 
           <div class="task-section">
