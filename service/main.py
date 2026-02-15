@@ -611,11 +611,6 @@ def start_scenario(request: Request):
         scenario = load_scenario(scenario_path)
         logger.info(f"Loaded scenario: {scenario_id} (type={scenario.interaction_type})")
         
-        # Create Firestore attempt (server-side, single source of truth)
-        from .firestore_client import create_attempt
-        attempt_id = create_attempt(student_email, scenario_id)
-        logger.info(f"Created attempt {attempt_id} for {student_email}")
-        
         # Ensure Gmail watch is active
         gmail_service = get_gmail_service()
         if not gmail_service:
@@ -624,7 +619,8 @@ def start_scenario(request: Request):
         
         _ensure_watch(gmail_service)
         
-        # For REPLY scenarios, send the starter email from the bot
+        # For REPLY scenarios, send the starter email BEFORE creating the attempt.
+        # This way a failed email send won't leave a stale "pending" attempt.
         if scenario.interaction_type == 'reply':
             email_agent = EmailAgent(scenario=scenario)
             starter_thread = email_agent.build_starter_thread()
@@ -644,6 +640,11 @@ def start_scenario(request: Request):
             
             gmail_service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
             logger.info(f"Starter email sent to {student_email} for scenario {scenario_id}")
+        
+        # Create Firestore attempt only after all fallible work succeeds
+        from .firestore_client import create_attempt
+        attempt_id = create_attempt(student_email, scenario_id)
+        logger.info(f"Created attempt {attempt_id} for {student_email}")
         
         return {
             'success': True,
