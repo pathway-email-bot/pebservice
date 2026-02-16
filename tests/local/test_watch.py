@@ -109,13 +109,15 @@ class TestEnsureWatch:
         assert "expires_at" in data, "Missing expires_at field"
         assert "completed_at" in data, "Missing completed_at field"
 
-        # expires_at should be ~7 days in the future
+        # expires_at should be in the future (within 7 days).
+        # The watch may have been renewed earlier, so we only check
+        # it hasn't expired yet — not that it's exactly ~7 days out.
         expires_at = data["expires_at"]
         if not expires_at.tzinfo:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
 
         now = datetime.now(timezone.utc)
         days_until_expiry = (expires_at - now).total_seconds() / 86400
-        assert 6 < days_until_expiry <= 7.1, (
-            f"Expected ~7 days until expiry, got {days_until_expiry:.1f}"
+        assert 0 < days_until_expiry <= 7.1, (
+            f"Expected expiry in the future (<=7 days), got {days_until_expiry:.1f}"
         )
