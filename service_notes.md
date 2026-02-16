@@ -69,6 +69,7 @@ Google client libraries check credentials in order: `GOOGLE_APPLICATION_CREDENTI
 
 ```
 users/{email}/
+  ├── firstName: string                 # student's first name (validated by rules)
   ├── activeScenarioId: string          # currently active scenario
   ├── activeAttemptId: string           # currently active attempt
   └── attempts/{attemptId}/
@@ -96,9 +97,13 @@ users/{email}/
 
 ### Security Rules
 
-Security rules are defined in `firestore.rules` and enforce that:
+Security rules are defined in `firestore.rules` and enforce:
 - Users can only read/write their own data (authenticated by email)
-- Cloud Functions use service account credentials (bypass security rules)
+- **Field-level restrictions**: client writes limited to known fields only
+  - User docs: `firstName`, `activeScenarioId`, `activeAttemptId`
+  - Attempts: create with `scenarioId`/`status`/`startedAt`, update only `status`
+- **Name validation**: `firstName` must be a string, 1-100 chars, no `<` or `>` (XSS prevention)
+- Cloud Functions use Admin SDK (bypass security rules) for score/feedback writes
 
 Deploy rules:
 ```powershell

@@ -253,8 +253,11 @@ python scripts/sync_secrets.py --list
 
 **Run tests**:
 ```powershell
-# Unit tests (no GCP access needed)
+# Python unit tests (no GCP access needed)
 python -m pytest tests/unit/ -v
+
+# Portal TypeScript unit tests (vitest)
+cd portal; npm test
 
 # Local tests — credential/connectivity checks against real GCP services
 python -m pytest tests/local/ -v --timeout=30
