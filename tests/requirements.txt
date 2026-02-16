@@ -15,6 +15,9 @@ google-api-python-client==2.*
 # HTTP requests for API integration tests
 requests
 
+# HTML parsing for browser E2E tests (extracting Firebase magic links)
+beautifulsoup4
+
 # Browser automation for portal integration tests
 playwright
 pytest-playwright

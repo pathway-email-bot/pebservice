@@ -401,6 +401,88 @@ form .btn-primary {
   flex-shrink: 0;
 }
 
+/* Clickable card header */
+.scenario-header-clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.scenario-header-clickable:hover {
+  background: rgba(232, 119, 34, 0.03);
+  border-radius: var(--radius-md);
+}
+
+/* Expand/collapse icon */
+.expand-icon {
+  display: inline-block;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin-right: var(--spacing-xs);
+  transition: transform 0.2s;
+}
+
+/* Interaction type badges */
+.interaction-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  vertical-align: middle;
+  margin-left: var(--spacing-sm);
+}
+
+.badge-initiate {
+  background: #E3F2FD;
+  color: #1565C0;
+}
+
+.badge-reply {
+  background: #F3E5F5;
+  color: #7B1FA2;
+}
+
+/* Expanded card state (distinct from active) */
+.scenario-card.expanded {
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+.scenario-card.expanded.active {
+  border-color: var(--color-primary);
+}
+
+/* Drawer actions (Start button container) */
+.drawer-actions {
+  margin-top: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.drawer-actions .start-btn {
+  min-width: 260px;
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-size: 1rem;
+}
+
+/* Attempt feedback in previous attempts modal */
+.attempt-feedback {
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-border);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.attempt-feedback p {
+  margin: 0;
+  line-height: 1.5;
+}
+
 /* Shimmer loading blocks */
 .shimmer-block {
   background: linear-gradient(90deg, #f0ebe4 25%, #e8e0d4 50%, #f0ebe4 75%);

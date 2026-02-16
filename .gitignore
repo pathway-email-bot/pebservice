@@ -17,15 +17,20 @@ temp_restore/
 # Note: Do NOT add *.json here - scenario/rubric JSON files must be committed.
 # Only secret-containing files (*.secret.json) are ignored above.
 
-# Portal build artifacts
-portal/node_modules/
+# Build artifacts
+node_modules/
 portal/dist/
+
+# Agent workflows (local dev config)
+.agent/
 
 # Auto-generated scenarios (copied from service/email_agent/scenarios/)
 portal/public/scenarios/
 
 # Test log output
 test_logs/
+# Browser E2E test output (screenshots, logs)
+tests/browser/output/
 
 # Scratch files (agent-generated temp output)
 tmp_*

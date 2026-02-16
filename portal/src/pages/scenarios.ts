@@ -11,10 +11,12 @@ import { listScenarios, startScenario, type ScenarioMetadata } from '../scenario
 import { listenToAttempt, listenToAttempts, listenToUserData, setFirstName, type Attempt } from '../firestore-service';
 import type { User } from 'firebase/auth';
 import { escapeHtml } from '../utils';
+import { devmode } from '../devmode';
 
 // Global state
 let currentScenarios: ScenarioMetadata[] = [];
-let activeScenarioId: string | null = null;
+let expandedScenarioId: string | null = null;   // which drawer is open (read-only preview)
+let activeScenarioId: string | null = null;      // which has a live pending attempt
 let isDrawerLoading = false;
 let attemptUnsubscribe: (() => void) | null = null;
 let attemptsUnsubscribe: (() => void) | null = null;
@@ -23,6 +25,9 @@ let studentFirstName: string | null = null;
 
 // Attempts grouped by scenario: scenarioId -> Attempt[] (sorted newest first)
 let attemptsByScenario: Map<string, Attempt[]> = new Map();
+
+// Stale attempt threshold: 24 hours
+const STALE_ATTEMPT_MS = 24 * 60 * 60 * 1000;
 
 export async function renderScenariosPage(container: HTMLElement): Promise<void> {
   // main.ts handles auth routing — if we're here, user should be logged in
@@ -74,10 +79,10 @@ async function renderAuthenticatedView(container: HTMLElement, user: User): Prom
       
       <main class="scenarios-container">
         <p class="subtitle">Choose a scenario to practice your professional email skills</p>
-        <p class="instruction">Click "Start" to begin. Only one scenario can be active at a time.</p>
+        <p class="instruction">Click a scenario to learn more. Press "Start" inside the drawer when you're ready to begin.</p>
         
         <div class="scenario-list" id="scenario-list">
-          ${currentScenarios.map(scenario => renderScenarioCard(scenario, false)).join('')}
+          ${currentScenarios.map(scenario => renderScenarioCard(scenario, false, false)).join('')}
         </div>
       </main>
     </div>
@@ -104,22 +109,21 @@ async function renderAuthenticatedView(container: HTMLElement, user: User): Prom
         attachHeaderHandlers();
       }
     }
-    if (!studentFirstName) {
+    // Show name modal if no name is set, or forced via ?devmode=forcenameentry (for browser E2E tests)
+    if (!studentFirstName || devmode.has('forcenameentry')) {
       showNameModal(user);
     }
   });
 
-  // Dev preview mode: ?preview in URL auto-activates first scenario
-  // so you can see active state styling locally without calling Cloud Function
-  // Gated behind import.meta.env.DEV — Vite strips this from production builds
-  if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('preview')) {
-    const previewMode = new URLSearchParams(window.location.search).get('preview') || 'default';
+  // Dev preview mode: ?devmode=preview auto-activates first scenario
+  // so you can see active state styling without calling Cloud Function
+  if (devmode.has('preview')) {
     activeScenarioId = currentScenarios[0]?.id ?? null;
+    expandedScenarioId = activeScenarioId;
     rerenderScenarios();
-    console.info(`[DEV] Preview mode: "${previewMode}"`);
 
-    // Named preview modes
-    if (previewMode === 'score_arrives') {
+    // Named sub-flags for specific preview behaviors
+    if (devmode.has('score_arrives')) {
       setTimeout(() => {
         const badge = document.querySelector('.score-badge');
         if (badge) {
@@ -134,6 +138,7 @@ async function renderAuthenticatedView(container: HTMLElement, user: User): Prom
 /**
  * Load all attempts from Firestore, group by scenario, and restore active state.
  * Sets up a real-time listener so score badges update live.
+ * Auto-expires stale pending attempts older than 24 hours.
  */
 function loadAttemptHistory(): void {
   if (attemptsUnsubscribe) attemptsUnsubscribe();
@@ -150,16 +155,22 @@ function loadAttemptHistory(): void {
     // Check for any active (pending) attempt and restore state
     const pendingAttempt = attempts.find(a => a.status === 'pending');
     if (pendingAttempt && !activeScenarioId) {
-      activeScenarioId = pendingAttempt.scenarioId;
+      const ageMs = Date.now() - pendingAttempt.startedAt.getTime();
+      if (ageMs < STALE_ATTEMPT_MS) {
+        // Recent attempt — restore as active
+        activeScenarioId = pendingAttempt.scenarioId;
+        expandedScenarioId = pendingAttempt.scenarioId;
 
-
-      // Re-attach listener for this specific attempt
-      if (attemptUnsubscribe) attemptUnsubscribe();
-      attemptUnsubscribe = listenToAttempt(pendingAttempt.id, (attempt) => {
-        if (attempt && attempt.status === 'graded') {
-          updateScenarioWithGrading(pendingAttempt.scenarioId, attempt);
-        }
-      });
+        // Re-attach listener for this specific attempt
+        if (attemptUnsubscribe) attemptUnsubscribe();
+        attemptUnsubscribe = listenToAttempt(pendingAttempt.id, (attempt) => {
+          if (attempt && attempt.status === 'graded') {
+            updateScenarioWithGrading(pendingAttempt.scenarioId, attempt);
+          }
+        });
+      } else {
+        console.info(`[UX] Stale pending attempt for "${pendingAttempt.scenarioId}" (${Math.round(ageMs / 3600000)}h old) — not restoring as active`);
+      }
     }
 
     // Re-render to show score badges and restore active state
@@ -303,7 +314,12 @@ function handleEditName(): void {
 }
 
 function attachScenarioHandlers(): void {
-  // Start button handlers
+  // Clickable card headers toggle the drawer
+  document.querySelectorAll('.scenario-header-clickable').forEach(header => {
+    header.addEventListener('click', handleToggleDrawer);
+  });
+
+  // Start button handlers (now inside the drawer)
   document.querySelectorAll('.start-btn').forEach(btn => {
     btn.addEventListener('click', handleStartScenario);
   });
@@ -317,6 +333,24 @@ function attachScenarioHandlers(): void {
   document.querySelectorAll('.prev-attempts-link').forEach(link => {
     link.addEventListener('click', handleShowPreviousAttempts);
   });
+}
+
+function handleToggleDrawer(e: Event): void {
+  // Don't toggle if clicking a button or link inside the header
+  const target = e.target as HTMLElement;
+  if (target.closest('button') || target.closest('a')) return;
+
+  const header = (e.currentTarget as HTMLElement);
+  const scenarioId = header.dataset.scenarioId;
+  if (!scenarioId) return;
+
+  // Toggle: if already expanded, collapse; otherwise expand this one
+  if (expandedScenarioId === scenarioId) {
+    expandedScenarioId = null;
+  } else {
+    expandedScenarioId = scenarioId;
+  }
+  rerenderScenarios();
 }
 
 async function handleCopyEmail(e: Event): Promise<void> {
@@ -347,66 +381,40 @@ async function handleCopyEmail(e: Event): Promise<void> {
 }
 
 async function handleStartScenario(e: Event): Promise<void> {
-  const scenarioId = (e.target as HTMLElement).dataset.scenarioId;
+  const button = e.target as HTMLElement;
+  const scenarioId = button.dataset.scenarioId;
   if (!scenarioId) return;
 
   const scenario = currentScenarios.find(s => s.id === scenarioId);
   if (!scenario) return;
 
-  // Measure clicked card's viewport position BEFORE DOM rebuild
-  const cardBefore = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"]`);
-  const cardTopBefore = cardBefore?.getBoundingClientRect().top ?? 0;
-
-  // Immediately open drawer in loading state
+  // Drawer is already open (Start button is inside it) — switch to loading
   activeScenarioId = scenarioId;
   isDrawerLoading = true;
-  rerenderScenarios();
 
-  // Anchor scroll: keep the card at the same viewport position
-  const cardAfter = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"]`);
-  const cardTopAfter = cardAfter?.getBoundingClientRect().top ?? 0;
-  window.scrollBy(0, cardTopAfter - cardTopBefore);
+  // Swap only the drawer internals (avoids re-triggering expand animation)
+  const drawer = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"] .scenario-drawer`);
+  if (drawer) {
+    drawer.innerHTML = renderDrawerLoading();
+  }
+  // Update header to show active styling
+  const card = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"]`);
+  card?.classList.add('active');
 
   try {
     // Call start_scenario Cloud Function (creates attempt + sends email for REPLY)
     const result = await startScenario(scenarioId);
 
-    // Loading done — swap drawer content in-place (avoids re-triggering expand animation)
+    // Loading done — swap drawer content in-place
     isDrawerLoading = false;
-    const drawer = document.querySelector('.scenario-drawer');
     if (drawer) {
-      drawer.innerHTML = `
-        <div class="drawer-content-loaded">
-          <div class="task-section">
-            <h4>📝 Your Task</h4>
-            <p>${scenario.student_task}</p>
-          </div>
-          
-          <div class="instructions-section">
-            <h4>📬 Instructions</h4>
-            ${scenario.interaction_type === 'initiate' ? `
-              <div class="copy-email-row">
-                <p style="margin-bottom:0"><strong>Send an email to:</strong> <code>pathwayemailbot@gmail.com</code></p>
-                <button class="copy-email-btn" data-email="pathwayemailbot@gmail.com" type="button">📋 Copy</button>
-              </div>
-              <p>Compose and send your email from your email client. You'll receive feedback automatically.</p>
-            ` : `
-              <p><strong>Check your email inbox</strong> for a message from the bot.</p>
-              <p>Reply to that email with your response. You'll receive feedback automatically.</p>
-            `}
-          </div>
-          
-          <div class="status-section">
-            <p class="pending-status">🤗 You're all set! Compose your best email and send it to pathwayemailbot@gmail.com — we'll be here when it arrives 💛</p>
-          </div>
-        </div>
-      `;
+      drawer.innerHTML = renderDrawerActive(scenario);
       // Re-attach copy-email handler
       drawer.querySelector('.copy-email-btn')?.addEventListener('click', handleCopyEmail);
     }
 
     // Set up grading listener
-    if (import.meta.env.DEV && result.attemptId.startsWith('mock-')) {
+    if (devmode.active && result.attemptId.startsWith('mock-')) {
       // DEV mock: simulate grading after 3 seconds
       console.info('[DEV MOCK] Simulating grading in 3 seconds...');
       setTimeout(() => {
@@ -437,14 +445,14 @@ async function handleStartScenario(e: Event): Promise<void> {
     console.error('Error starting scenario:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    // Collapse drawer back and show error
+    // Reset active state but keep drawer open
     activeScenarioId = null;
     isDrawerLoading = false;
     rerenderScenarios();
 
     // Show error on the card
-    const card = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"]`);
-    const errorDiv = card?.querySelector('.error-message') as HTMLElement;
+    const errorCard = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"]`);
+    const errorDiv = errorCard?.querySelector('.error-message') as HTMLElement;
     if (errorDiv) {
       errorDiv.textContent = `❌ Error: ${errorMessage}`;
       errorDiv.style.display = 'block';
@@ -457,10 +465,14 @@ function rerenderScenarios(): void {
   if (!listContainer) return;
 
   listContainer.innerHTML = currentScenarios
-    .map(scenario => renderScenarioCard(scenario, scenario.id === activeScenarioId))
+    .map(scenario => renderScenarioCard(
+      scenario,
+      scenario.id === expandedScenarioId,
+      scenario.id === activeScenarioId
+    ))
     .join('');
 
-  // Toggle dim styling on inactive cards
+  // Toggle dim styling on inactive cards when one is active
   if (activeScenarioId) {
     listContainer.classList.add('has-active');
   } else {
@@ -590,6 +602,11 @@ function handleShowPreviousAttempts(e: Event): void {
               </div>
               <span class="score-indicator ${colorClass}">${score}/${maxScore}</span>
             </div>
+            ${a.feedback ? `
+              <div class="attempt-feedback">
+                <p>${a.feedback}</p>
+              </div>
+            ` : ''}
           `;
   }).join('')}
       </div>
@@ -605,21 +622,116 @@ function handleShowPreviousAttempts(e: Event): void {
   document.body.appendChild(modal);
 }
 
-function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): string {
-  const isActive = isExpanded;
-  const scoreIndicator = getScoreIndicator(scenario.id);
+/** Shimmer loading blocks for the drawer */
+function renderDrawerLoading(): string {
+  return `
+    <div class="shimmer-block" style="height: 1.2em; width: 40%; margin-bottom: 12px;"></div>
+    <div class="shimmer-block" style="height: 3em; width: 100%; margin-bottom: 16px;"></div>
+    <div class="shimmer-block" style="height: 1.2em; width: 50%; margin-bottom: 12px;"></div>
+    <div class="shimmer-block" style="height: 4em; width: 100%; margin-bottom: 16px;"></div>
+    <div class="shimmer-block" style="height: 2em; width: 70%;"></div>
+  `;
+}
 
-  // Build the score column for the card header (works for both active and inactive)
-  let headerScoreHtml = scoreIndicator; // default: graded score badges for inactive
+/** Active attempt drawer content (after Cloud Function returns) */
+function renderDrawerActive(scenario: ScenarioMetadata): string {
+  return `
+    <div class="drawer-content-loaded">
+      <div class="task-section">
+        <h4>📝 Your Task</h4>
+        <p>${scenario.student_task}</p>
+      </div>
+      
+      <div class="instructions-section">
+        <h4>📬 Instructions</h4>
+        ${scenario.interaction_type === 'initiate' ? `
+          <div class="copy-email-row">
+            <p style="margin-bottom:0"><strong>Send an email to:</strong> <code>pathwayemailbot@gmail.com</code></p>
+            <button class="copy-email-btn" data-email="pathwayemailbot@gmail.com" type="button">📋 Copy</button>
+          </div>
+          <p>Compose and send your email from your email client. You'll receive feedback automatically.</p>
+        ` : `
+          <p><strong>Check your email inbox</strong> for a message from the bot.</p>
+          <p>Reply to that email with your response. You'll receive feedback automatically.</p>
+        `}
+      </div>
+      
+      <div class="status-section">
+        <p class="pending-status">🤗 You're all set! Compose your best email and send it to pathwayemailbot@gmail.com — we'll be here when it arrives 💛</p>
+      </div>
+    </div>
+  `;
+}
+
+/** Render the drawer preview (read-only, before starting) */
+function renderDrawerPreview(scenario: ScenarioMetadata): string {
+  const attempts = attemptsByScenario.get(scenario.id);
+  const latestGraded = attempts?.find(a => a.status === 'graded');
+
+  // Previous grading results shown on load
+  let gradingHtml = '';
+  if (latestGraded) {
+    gradingHtml = `
+      <div class="grading-results">
+        <div class="grading-header">
+          <h4>📊 Latest Result</h4>
+          <div class="score">Score: ${latestGraded.score}/${latestGraded.maxScore}</div>
+        </div>
+        <div class="feedback">
+          <p><strong>Feedback:</strong></p>
+          <p>${latestGraded.feedback || 'No feedback available'}</p>
+        </div>
+        <div class="graded-time">
+          Graded at: ${latestGraded.gradedAt?.toLocaleString() || 'Unknown'}
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="drawer-content-loaded">
+      <div class="task-section">
+        <h4>📝 Your Task</h4>
+        <p>${scenario.student_task}</p>
+      </div>
+
+      <div class="task-section">
+        <h4>🎯 Grading Focus</h4>
+        <p>${scenario.grading_focus}</p>
+      </div>
+
+      <div class="task-section">
+        <h4>🏢 Environment</h4>
+        <p>${scenario.environment.replace(/_/g, ' ')}</p>
+      </div>
+
+      ${gradingHtml}
+
+      <div class="drawer-actions">
+        <div class="error-message" style="display: none;"></div>
+        <button class="btn btn-primary start-btn" data-scenario-id="${scenario.id}">
+          ${scenario.interaction_type === 'initiate' ? '📤 Start — You Send First' : '📥 Start — You\'ll Receive an Email'}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean, isActive: boolean): string {
+  const scoreIndicator = getScoreIndicator(scenario.id);
+  const interactionBadge = scenario.interaction_type === 'initiate'
+    ? '<span class="interaction-badge badge-initiate" title="You compose and send the first email">📤 You Send</span>'
+    : '<span class="interaction-badge badge-reply" title="You reply to an email from the bot">📥 You Reply</span>';
+
+  // Build the score column for the card header
+  let headerScoreHtml = scoreIndicator;
   if (isActive && !scoreIndicator) {
-    // Active with no prior graded score — show pending
     headerScoreHtml = `
       <div class="score-indicator-row">
         <span class="score-badge">Score pending<span class="dots"></span></span>
       </div>
     `;
-  } else if (isActive && scoreIndicator) {
-    // Active with prior scores — show score + pending note  
+  } else if (isActive) {
     headerScoreHtml = `
       <div class="score-indicator-row">
         <span class="score-badge">Score pending<span class="dots"></span></span>
@@ -627,7 +739,7 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
     `;
   }
 
-  // Build previous attempts link for active cards
+  // Build previous attempts link
   const prevAttemptsLink = (() => {
     const atts = attemptsByScenario.get(scenario.id);
     if (!atts) return '';
@@ -636,64 +748,41 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean): st
     return `<a href="#" class="prev-attempts-link" data-scenario-id="${scenario.id}">(${gradedCount} previous)</a>`;
   })();
 
+  // Determine drawer content
+  let drawerHtml = '';
+  if (isExpanded) {
+    if (isActive && isDrawerLoading) {
+      drawerHtml = renderDrawerLoading();
+    } else if (isActive) {
+      drawerHtml = renderDrawerActive(scenario);
+    } else {
+      drawerHtml = renderDrawerPreview(scenario);
+    }
+  }
+
+  const expandIcon = isExpanded ? '▾' : '▸';
+
   return `
-    <div class="scenario-card ${isActive ? 'active' : ''}" data-scenario-id="${scenario.id}">
-      <div class="scenario-header">
+    <div class="scenario-card ${isActive ? 'active' : ''} ${isExpanded ? 'expanded' : ''}" data-scenario-id="${scenario.id}">
+      <div class="scenario-header scenario-header-clickable" data-scenario-id="${scenario.id}">
         <div class="scenario-info">
-          <h3 class="scenario-title">${scenario.name}</h3>
+          <h3 class="scenario-title">
+            <span class="expand-icon">${expandIcon}</span>
+            ${scenario.name}
+            ${interactionBadge}
+          </h3>
           <p class="scenario-description">${scenario.description}</p>
           <p class="scenario-role"><strong>Counterpart:</strong> ${scenario.counterpart_role}</p>
         </div>
-        ${!isActive ? `
-          ${scoreIndicator}
-          <div class="scenario-actions">
-            <div class="error-message" style="display: none;"></div>
-            <button class="btn btn-primary start-btn" data-scenario-id="${scenario.id}">
-              Start
-            </button>
-          </div>
-        ` : `
-          <div class="score-indicator-row">
-            ${headerScoreHtml}
-            ${prevAttemptsLink}
-          </div>
-        `}
+        <div class="scenario-actions">
+          ${headerScoreHtml}
+          ${prevAttemptsLink}
+        </div>
       </div>
       
-      ${isActive ? `
+      ${isExpanded ? `
         <div class="scenario-drawer">
-          ${isDrawerLoading ? `
-            <div class="shimmer-block" style="height: 1.2em; width: 40%; margin-bottom: 12px;"></div>
-            <div class="shimmer-block" style="height: 3em; width: 100%; margin-bottom: 16px;"></div>
-            <div class="shimmer-block" style="height: 1.2em; width: 50%; margin-bottom: 12px;"></div>
-            <div class="shimmer-block" style="height: 4em; width: 100%; margin-bottom: 16px;"></div>
-            <div class="shimmer-block" style="height: 2em; width: 70%;"></div>
-          ` : `
-            <div class="drawer-content-loaded">
-              <div class="task-section">
-                <h4>📝 Your Task</h4>
-                <p>${scenario.student_task}</p>
-              </div>
-              
-              <div class="instructions-section">
-                <h4>📬 Instructions</h4>
-                ${scenario.interaction_type === 'initiate' ? `
-                  <div class="copy-email-row">
-                    <p style="margin-bottom:0"><strong>Send an email to:</strong> <code>pathwayemailbot@gmail.com</code></p>
-                    <button class="copy-email-btn" data-email="pathwayemailbot@gmail.com" type="button">📋 Copy</button>
-                  </div>
-                  <p>Compose and send your email from your email client. You'll receive feedback automatically.</p>
-                ` : `
-                  <p><strong>Check your email inbox</strong> for a message from the bot.</p>
-                  <p>Reply to that email with your response. You'll receive feedback automatically.</p>
-                `}
-              </div>
-              
-              <div class="status-section">
-                <p class="pending-status">🤗 You're all set! Compose your best email and send it to pathwayemailbot@gmail.com — we'll be here when it arrives 💛</p>
-              </div>
-            </div>
-          `}
+          ${drawerHtml}
         </div>
       ` : ''}
     </div>

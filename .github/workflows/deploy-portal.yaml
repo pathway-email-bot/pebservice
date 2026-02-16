@@ -65,3 +65,31 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  browser-test:
+    runs-on: ubuntu-latest
+    needs: deploy
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r tests/requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Auth as test runner
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_TEST_SA_KEY }}'
+
+      - name: Run browser E2E test
+        run: python -m pytest tests/browser/ -v --timeout=180
