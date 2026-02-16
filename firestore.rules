@@ -1,10 +1,25 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // firstName (if present) must be a non-empty string ≤100 chars with no
+    // angle brackets.  We accept any script/culture but block '<' and '>' at
+    // the data layer so stored names can never contain HTML tags (XSS).
+    // Defence-in-depth: the portal also HTML-escapes at render time.
+    function isValidFirstName(data) {
+      return !('firstName' in data)
+             || (data.firstName is string
+                 && data.firstName.size() >= 1
+                 && data.firstName.size() <= 100
+                 && !data.firstName.matches('.*[<>].*'));
+    }
+
     match /users/{email} {
-      // Users can read and write their own data
-      allow read, write: if request.auth != null 
-                         && request.auth.token.email == email;
+      allow read: if request.auth != null
+                  && request.auth.token.email == email;
+      allow write: if request.auth != null
+                   && request.auth.token.email == email
+                   && isValidFirstName(request.resource.data);
     }
     match /users/{email}/attempts/{attemptId} {
       // Users can read and write their own attempts

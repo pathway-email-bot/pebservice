@@ -151,3 +151,43 @@ class TestEnsureWatch:
             mock_service.users.assert_not_called()
         finally:
             main_module._watch_expires_at = original
+
+
+
+class TestPersonalizeBody:
+    """Tests for _personalize_body placeholder substitution.
+
+    _personalize_body is now a pure function: (body, first_name) -> str.
+    Names are validated at write time by Firestore rules, so no mocks needed.
+    """
+
+    def test_replaces_placeholder_with_name(self):
+        from service.main import _personalize_body
+        body = "Hi {student_name},\n\nWelcome!"
+        result = _personalize_body(body, "Sarah")
+        assert result == "Hi Sarah,\n\nWelcome!"
+
+    def test_no_placeholder_returns_body_unchanged(self):
+        from service.main import _personalize_body
+        body = "Hi there,\n\nWelcome!"
+        result = _personalize_body(body, "Sarah")
+        assert result == body
+
+    def test_none_name_removes_placeholder(self):
+        from service.main import _personalize_body
+        body = "Hi {student_name},\n\nWelcome!"
+        result = _personalize_body(body, None)
+        assert result == "Hi ,\n\nWelcome!"
+
+    def test_empty_name_removes_placeholder(self):
+        from service.main import _personalize_body
+        body = "Hi {student_name},\n\nWelcome!"
+        result = _personalize_body(body, "")
+        assert result == "Hi ,\n\nWelcome!"
+
+    def test_unicode_name_works(self):
+        from service.main import _personalize_body
+        body = "Hi {student_name},\n\nWelcome!"
+        result = _personalize_body(body, "María")
+        assert result == "Hi María,\n\nWelcome!"
+

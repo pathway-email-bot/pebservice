@@ -8,8 +8,9 @@
 
 import { logout, getCurrentUser } from '../auth';
 import { listScenarios, startScenario, type ScenarioMetadata } from '../scenarios-api';
-import { listenToAttempt, listenToAttempts, type Attempt } from '../firestore-service';
+import { listenToAttempt, listenToAttempts, listenToUserData, setFirstName, type Attempt } from '../firestore-service';
 import type { User } from 'firebase/auth';
+import { escapeHtml } from '../utils';
 
 // Global state
 let currentScenarios: ScenarioMetadata[] = [];
@@ -17,6 +18,8 @@ let activeScenarioId: string | null = null;
 let isDrawerLoading = false;
 let attemptUnsubscribe: (() => void) | null = null;
 let attemptsUnsubscribe: (() => void) | null = null;
+let userDataUnsubscribe: (() => void) | null = null;
+let studentFirstName: string | null = null;
 
 // Attempts grouped by scenario: scenarioId -> Attempt[] (sorted newest first)
 let attemptsByScenario: Map<string, Attempt[]> = new Map();
@@ -64,9 +67,8 @@ async function renderAuthenticatedView(container: HTMLElement, user: User): Prom
     <div class="scenarios-page">
       <header class="page-header">
         <h1>📧 Email Practice Scenarios</h1>
-        <div class="user-info">
-          <span>Welcome, ${user.email}</span>
-          <button id="logout-btn" class="btn btn-secondary">Sign Out</button>
+        <div class="user-info" id="user-info">
+          ${renderUserHeader(user)}
         </div>
       </header>
       
@@ -81,19 +83,31 @@ async function renderAuthenticatedView(container: HTMLElement, user: User): Prom
     </div>
   `;
 
-  // Add logout handler
-  document.getElementById('logout-btn')?.addEventListener('click', async () => {
-    // Clean up listeners before logout
-    if (attemptUnsubscribe) attemptUnsubscribe();
-    if (attemptsUnsubscribe) attemptsUnsubscribe();
-    await logout();
-  });
+  // Add header handlers (logout + edit name)
+  attachHeaderHandlers();
 
   // Add start button handlers
   attachScenarioHandlers();
 
   // Load attempt history from Firestore and restore active state
   loadAttemptHistory();
+
+  // Listen to user data for firstName (piggybacks on existing user doc)
+  if (userDataUnsubscribe) userDataUnsubscribe();
+  userDataUnsubscribe = listenToUserData((data) => {
+    const newName = data?.firstName || null;
+    if (newName !== studentFirstName) {
+      studentFirstName = newName;
+      const userInfo = document.getElementById('user-info');
+      if (userInfo) {
+        userInfo.innerHTML = renderUserHeader(user);
+        attachHeaderHandlers();
+      }
+    }
+    if (!studentFirstName) {
+      showNameModal(user);
+    }
+  });
 
   // Dev preview mode: ?preview in URL auto-activates first scenario
   // so you can see active state styling locally without calling Cloud Function
@@ -150,6 +164,141 @@ function loadAttemptHistory(): void {
 
     // Re-render to show score badges and restore active state
     rerenderScenarios();
+  });
+}
+
+function renderUserHeader(user: User): string {
+  if (studentFirstName) {
+    return `
+      <span>Hi <strong>${escapeHtml(studentFirstName)}</strong></span>
+      <a href="#" id="edit-name-link" class="edit-name-link">Edit Name</a>
+      <button id="logout-btn" class="btn btn-secondary">Sign Out</button>
+    `;
+  }
+  return `
+    <span>${user.email}</span>
+    <button id="logout-btn" class="btn btn-secondary">Sign Out</button>
+  `;
+}
+
+function attachHeaderHandlers(): void {
+  document.getElementById('logout-btn')?.addEventListener('click', async () => {
+    if (attemptUnsubscribe) attemptUnsubscribe();
+    if (attemptsUnsubscribe) attemptsUnsubscribe();
+    if (userDataUnsubscribe) userDataUnsubscribe();
+    await logout();
+  });
+
+  document.getElementById('edit-name-link')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    handleEditName();
+  });
+}
+
+function showNameModal(user: User): void {
+  const overlay = document.createElement('div');
+  overlay.className = 'name-modal-overlay';
+  overlay.innerHTML = `
+    <div class="name-modal">
+      <div class="welcome-icon">👋</div>
+      <h2>Welcome! What's your first name?</h2>
+      <p class="subtitle">We'll use it to personalize your practice emails.</p>
+      <form id="name-form">
+        <div class="form-group">
+          <input
+            type="text"
+            id="first-name-input"
+            placeholder="e.g. Sarah"
+            required
+            maxlength="30"
+            autocomplete="given-name"
+          />
+        </div>
+        <button type="submit" class="btn btn-primary" id="name-submit-btn">Begin Practice</button>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Focus the input
+  const input = document.getElementById('first-name-input') as HTMLInputElement;
+  input?.focus();
+
+  const form = document.getElementById('name-form') as HTMLFormElement;
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = input.value.trim();
+    if (!name) return;
+
+    const btn = document.getElementById('name-submit-btn') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+    try {
+      await setFirstName(name);
+      studentFirstName = name;
+
+      // Update header and remove modal
+      const userInfo = document.getElementById('user-info');
+      if (userInfo) userInfo.innerHTML = renderUserHeader(user);
+      attachHeaderHandlers();
+      overlay.remove();
+    } catch (error) {
+      console.error('Error saving name:', error);
+      btn.disabled = false;
+      btn.textContent = 'Begin Practice';
+    }
+  });
+}
+
+function handleEditName(): void {
+  const userInfo = document.getElementById('user-info');
+  if (!userInfo) return;
+
+  const currentName = escapeHtml(studentFirstName || '');
+  userInfo.innerHTML = `
+    <form id="edit-name-form" class="edit-name-form">
+      <input
+        type="text"
+        id="edit-name-input"
+        value="${currentName}"
+        maxlength="30"
+        autocomplete="given-name"
+      />
+      <button type="submit" class="btn btn-primary btn-sm">Save</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="cancel-edit-name">Cancel</button>
+    </form>
+  `;
+
+  const input = document.getElementById('edit-name-input') as HTMLInputElement;
+  input?.focus();
+  input?.select();
+
+  const user = getCurrentUser();
+
+  document.getElementById('cancel-edit-name')?.addEventListener('click', () => {
+    if (userInfo && user) {
+      userInfo.innerHTML = renderUserHeader(user);
+      attachHeaderHandlers();
+    }
+  });
+
+  document.getElementById('edit-name-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = input.value.trim();
+    if (!name) return;
+
+    try {
+      await setFirstName(name);
+      studentFirstName = name;
+      if (userInfo && user) {
+        userInfo.innerHTML = renderUserHeader(user);
+        attachHeaderHandlers();
+      }
+    } catch (error) {
+      console.error('Error updating name:', error);
+    }
   });
 }
 

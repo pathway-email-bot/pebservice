@@ -105,3 +105,4 @@ def update_attempt_graded(email: str, attempt_id: str, score: int, max_score: in
             'activeScenarioId': None,
             'activeAttemptId': None,
         })
+

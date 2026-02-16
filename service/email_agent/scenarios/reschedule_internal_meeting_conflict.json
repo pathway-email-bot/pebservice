@@ -1,14 +1,14 @@
 {
   "name": "Reschedule Internal Meeting",
-  "interaction_type": "initiate",
+  "interaction_type": "reply",
   "description": "Remote administrative assistant has a scheduling conflict and needs to reschedule an internal meeting in a professional way.",
   "environment": "remote_workplace",
   "counterpart_role": "Department manager",
-  "student_task": "You are a remote administrative assistant. You are supposed to attend a short internal meeting, but you realize that you have another important call at the same time. Write an email to your department manager. Apologize briefly, explain the conflict simply, suggest 1–2 new times for the meeting, and confirm that you still care about the topic. Use polite, simple English.",
+  "student_task": "You are a remote administrative assistant. Your department manager Michael Johns sent a reminder about a team check-in, but you realize you have another important call at the same time. Reply to Michael's email. Apologize briefly, explain the conflict simply, suggest 1–2 new times for the meeting, and confirm that you still care about the topic. Use polite, simple English.",
   "counterpart_style": "You are a department manager who understands that schedules can change but dislikes last-minute surprises. You appreciate when people bring solutions, not just problems.",
   "grading_focus": "Focus on whether the student clearly explains the conflict, suggests new times, keeps the message polite and short, and shows that they are still engaged with the work.",
   "starter_sender_name": "Michael Johns (Department Manager)",
   "starter_subject": "Reminder: team check-in tomorrow",
-  "starter_email_body": null,
+  "starter_email_body": "Hi {student_name},\n\nJust a reminder that we have our weekly check-in tomorrow at 10:00 AM. We'll be going over project updates and the Q2 priorities list.\n\nPlease come prepared with a quick summary of where things stand on your end. I'd like to keep it to 30 minutes.\n\nSee you then,\nMichael",
   "starter_email_generation_hint": "Write a brief reminder email from the manager confirming a team check-in time and expecting everyone to attend."
 }

@@ -65,6 +65,33 @@ class TestScenarioJsonValidation:
                 f"{scenario_path.name}: got '{data['interaction_type']}'"
             )
 
+    def test_student_task_mentions_counterpart_name(self, scenario_path):
+        """student_task should mention the counterpart by name so students know who to address."""
+        data = json.loads(scenario_path.read_text(encoding="utf-8"))
+        sender = data.get("starter_sender_name", "")
+        task = data.get("student_task", "")
+        if not sender:
+            return  # no sender defined, skip
+        # Extract name parts: "Karen Lopez (Office Manager)" → ["Karen", "Lopez"]
+        import re
+        name_parts = re.split(r'[^a-zA-Z]+', sender)
+        name_parts = [p for p in name_parts if len(p) > 1]  # skip single chars
+        # At least the first and last name should appear in student_task
+        missing = [p for p in name_parts[:2] if p not in task]
+        assert not missing, (
+            f"{scenario_path.name}: student_task should mention counterpart name. "
+            f"Missing: {missing} from '{sender}'"
+        )
+
+    def test_reply_scenario_has_starter_body(self, scenario_path):
+        """Reply scenarios must have a static starter_email_body."""
+        data = json.loads(scenario_path.read_text(encoding="utf-8"))
+        if data.get("interaction_type") == "reply":
+            body = data.get("starter_email_body")
+            assert body and isinstance(body, str) and len(body) > 10, (
+                f"{scenario_path.name}: reply scenario must have a non-empty starter_email_body"
+            )
+
     def test_loads_into_dataclass(self, scenario_path):
         """Must load into Scenario without errors."""
         scenario = load_scenario(scenario_path)

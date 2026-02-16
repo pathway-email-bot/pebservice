@@ -18,6 +18,7 @@ export interface Attempt {
 export interface UserData {
     activeScenarioId: string | null;
     activeAttemptId: string | null;
+    firstName?: string;
 }
 
 /**
@@ -68,6 +69,19 @@ export function listenToUserData(callback: (data: UserData | null) => void): () 
             callback(null);
         }
     });
+}
+
+/**
+ * Set the student's first name in their Firestore user doc
+ */
+export async function setFirstName(name: string): Promise<void> {
+    const user = auth.currentUser;
+    if (!user?.email) {
+        throw new Error('User not authenticated');
+    }
+
+    const userRef = doc(db, 'users', user.email);
+    await setDoc(userRef, { firstName: name.trim() }, { merge: true });
 }
 
 /**

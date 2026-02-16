@@ -1,14 +1,14 @@
 {
   "name": "Missed Remote Standup",
-  "interaction_type": "initiate",
+  "interaction_type": "reply",
   "description": "Junior remote employee missed the daily standup due to an unexpected power and internet outage and needs to explain and give an update.",
   "environment": "remote_workplace",
   "counterpart_role": "US-based engineering manager",
-  "student_task": "You missed the team standup because of a sudden power and internet outage in your area. Write an email to your manager. Apologize briefly, explain what happened in simple English, share what you have done so far, and explain your plan for the rest of the day. Show that you take your work seriously and want to be reliable.",
+  "student_task": "You missed the team standup because of a sudden power and internet outage in your area. Your manager Jordan Smith has reached out asking if everything is okay. Reply to Jordan's email. Apologize briefly, explain what happened in simple English, share what you have done so far, and explain your plan for the rest of the day. Show that you take your work seriously and want to be reliable.",
   "counterpart_style": "You are a calm and supportive manager. You care about reliability but also understand technical problems in other countries.",
   "grading_focus": "Focus on whether the student takes responsibility, explains the situation clearly without long excuses, and gives a concrete plan.",
   "starter_sender_name": "Jordan Smith (Engineering Manager)",
   "starter_subject": "Missed standup this morning",
-  "starter_email_body": null,
+  "starter_email_body": "Hey {student_name},\n\nI noticed you weren't on standup this morning. We covered your items but wanted to check in — is everything okay?\n\nCan you send me a quick update on what you're working on today when you get a chance?\n\nThanks,\nJordan",
   "starter_email_generation_hint": "Write a short, calm email from the manager asking if everything is okay and requesting a quick update."
 }

@@ -506,6 +506,32 @@ def _check_and_claim_watch(data: dict, now: datetime) -> bool:
 
 
 # ============================================================================
+# Name personalisation helpers
+# ============================================================================
+
+_STUDENT_NAME_PLACEHOLDER = "{student_name}"
+
+
+def _personalize_body(body: str, first_name: str | None) -> str:
+    """Replace {student_name} placeholder with the student's first name.
+
+    Names are validated at write time by Firestore security rules, so
+    any value that made it into Firestore is trusted here.
+
+    If no name is set, the placeholder is removed so
+    "Hi {student_name}," gracefully becomes "Hi ,".
+    """
+    if _STUDENT_NAME_PLACEHOLDER not in body:
+        return body
+
+    if first_name:
+        return body.replace(_STUDENT_NAME_PLACEHOLDER, first_name)
+
+    # No name — remove placeholder
+    return body.replace(_STUDENT_NAME_PLACEHOLDER, "")
+
+
+# ============================================================================
 # HTTP Cloud Function: start_scenario
 # ============================================================================
 
@@ -626,9 +652,14 @@ def start_scenario(request: Request):
         # For REPLY scenarios, send the starter email BEFORE creating the attempt.
         # This way a failed email send won't leave a stale "pending" attempt.
         if scenario.interaction_type == 'reply':
+            # Read student's first name for email personalisation (single read)
+            from .firestore_client import get_firestore_client
+            user_doc = get_firestore_client().collection('users').document(student_email).get()
+            first_name = user_doc.to_dict().get('firstName') if user_doc.exists else None
+
             from_name = scenario.starter_sender_name
             subject = f"[PEB:{scenario_id}] {scenario.starter_subject}"
-            body = scenario.starter_email_body
+            body = _personalize_body(scenario.starter_email_body, first_name)
             
             raw_message = _build_mime_message(
                 from_addr=BOT_EMAIL,

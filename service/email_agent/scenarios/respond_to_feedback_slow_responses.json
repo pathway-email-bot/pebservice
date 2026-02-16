@@ -1,14 +1,14 @@
 {
   "name": "Respond to Feedback on Slow Responses",
-  "interaction_type": "initiate",
+  "interaction_type": "reply",
   "description": "Remote administrative assistant receives feedback that their email responses have been too slow and needs to respond professionally and suggest improvements.",
   "environment": "remote_workplace",
   "counterpart_role": "US-based team lead",
-  "student_task": "You are a remote administrative assistant. Your team lead has written to you saying that your email responses have been slower than they would like. Write an email back. Thank them for the feedback, explain briefly if there was any reason (for example, time zone or internet issues) without making long excuses, and describe 1–2 simple actions you will take to respond faster in the future. Use polite, simple English and show that you are open to improvement.",
+  "student_task": "You are a remote administrative assistant. Your team lead Laura King has written to you saying that your email responses have been slower than they would like. Reply to Laura's email. Thank her for the feedback, explain briefly if there was any reason (for example, time zone or internet issues) without making long excuses, and describe 1–2 simple actions you will take to respond faster in the future. Use polite, simple English and show that you are open to improvement.",
   "counterpart_style": "You are a team lead who wants reliable communication. You are firm but want to help the assistant succeed and appreciate a positive attitude toward feedback.",
   "grading_focus": "Focus on whether the student receives the feedback respectfully, keeps explanations short, suggests concrete steps to improve, and maintains a professional tone.",
   "starter_sender_name": "Laura King (Team Lead)",
   "starter_subject": "Response times on recent emails",
-  "starter_email_body": null,
+  "starter_email_body": "Hi {student_name},\n\nI wanted to bring something up that I've noticed over the past couple of weeks. There have been a few times where emails from me or from other team members sat for several hours before getting a response, and in a couple of cases it was the next day.\n\nI know time zones can be tricky, but our expectation is that messages sent during your working hours get a reply within about an hour, even if it's just a quick acknowledgment.\n\nI'd like to hear your thoughts on this and what we can do to improve things. You're doing great work otherwise — I just want to make sure communication stays tight.\n\nBest,\nLaura",
   "starter_email_generation_hint": "Write an email from the team lead giving calm but clear feedback that the assistant's email replies have been slower than needed, and asking them to improve their response times."
 }

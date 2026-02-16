@@ -1,14 +1,14 @@
 {
   "name": "Respond to Customer Complaint",
-  "interaction_type": "initiate",
+  "interaction_type": "reply",
   "description": "Remote customer support assistant needs to respond to a polite customer complaint about a delayed reply or small mistake.",
   "environment": "customer_support",
   "counterpart_role": "Customer of a small online business",
-  "student_task": "You are a remote customer support assistant for a small online business. A customer wrote to say they are unhappy because it took a long time to get a reply or there was a small mistake in their order. Write an email back to the customer. Thank them for writing, apologize briefly, explain in simple English what you can do to help, and clearly state the next step (for example, correction, refund, or updated information). Keep the tone calm, respectful, and reassuring.",
+  "student_task": "You are a remote customer support assistant for a small online business. A customer named Alex Carter wrote to say they are unhappy because it took a long time to get a reply or there was a small mistake in their order. Reply to Alex's email. Thank them for writing, apologize briefly, explain in simple English what you can do to help, and clearly state the next step (for example, correction, refund, or updated information). Keep the tone calm, respectful, and reassuring.",
   "counterpart_style": "You are a customer who is slightly frustrated but polite. You simply want your problem to be acknowledged and fixed.",
   "grading_focus": "Focus on whether the student apologizes appropriately, shows understanding of the customer's problem, explains the solution clearly, and keeps a respectful and reassuring tone.",
   "starter_sender_name": "Alex Carter (Customer)",
   "starter_subject": "Concern about my recent order",
-  "starter_email_body": null,
+  "starter_email_body": "Hi {student_name},\n\nI placed an order last Tuesday (order #4821) and received it yesterday, but the color of the phone case is wrong — I ordered the navy blue one, not black.\n\nI also emailed your support team about this three days ago but haven't heard back. I understand you might be busy, but I'd really appreciate some help getting this sorted out.\n\nCould you let me know what the options are? I'd prefer an exchange if possible.\n\nThank you,\nAlex Carter",
   "starter_email_generation_hint": "Write an email from a customer politely complaining that their order had a small mistake or that support replied slower than they expected, and asking what can be done."
 }
