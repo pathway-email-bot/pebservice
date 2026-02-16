@@ -3,12 +3,9 @@
         "types": [
             "vitest/globals"
         ],
-        "baseUrl": ".",
-        "paths": {
-            "vitest": [
-                "../../../portal/node_modules/vitest"
-            ]
-        }
+        "typeRoots": [
+            "../../../portal/node_modules"
+        ]
     },
     "include": [
         "./**/*.test.ts"
