@@ -6,7 +6,10 @@ on:
       - main
     paths:
       - 'service/**'
-      - 'tests/**'
+      - 'tests/unit/test_*.py'
+      - 'tests/local/**'
+      - 'tests/integration/**'
+      - 'tests/requirements.txt'
       - '.github/workflows/deploy-service.yaml'
   workflow_dispatch:
 
