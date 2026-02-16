@@ -268,7 +268,10 @@ class TestHappyPath:
 
         # ── Step 4: Enter name (if modal appears) ──────────────────
         # The name modal shows if no name is set, or if devmode=forcenameentry is active.
-        # If the name is already set from a previous run, this step is skipped.
+        # It depends on Firestore data loading (~1s after scenarios container renders),
+        # so wait a moment before checking visibility.
+        import time as _time
+        _time.sleep(2)  # allow Firestore listener to fire
         name_modal = page.locator(".name-modal-overlay")
         if name_modal.is_visible():
             _snap(page, "05a_name_modal")
@@ -280,20 +283,25 @@ class TestHappyPath:
             _log("Name modal not shown (name already set). Skipping.")
 
         # ── Step 5: Start a scenario ─────────────────────────────
-        # Find a scenario card that has a Start button (i.e., not already active)
-        start_btn = page.locator('.start-btn').first
-        expect(start_btn).to_be_visible(timeout=5000)
+        # New UI: cards are collapsed. Click header to expand drawer, then Start button.
+        scenario_id = SCENARIO_ID  # default target
+        card_header = page.locator(f'.scenario-header-clickable[data-scenario-id="{SCENARIO_ID}"]')
+        card_header.click()
+        _log(f"Expanding drawer for: {SCENARIO_ID}")
 
-        # Get the scenario ID from the Start button
-        scenario_id = start_btn.get_attribute('data-scenario-id')
-        _log(f"Selected scenario: {scenario_id}")
-        _snap(page, "06_before_start")
+        # Wait for Start button to appear in the expanded drawer
+        start_btn = page.locator(f'.start-btn[data-scenario-id="{SCENARIO_ID}"]')
+        expect(start_btn).to_be_visible(timeout=5000)
+        _snap(page, "06_drawer_expanded")
 
         # Click Start
         start_btn.click()
+        _log("Clicked Start button — waiting for Cloud Function response...")
 
-        # Wait for the active drawer to appear (loading completes)
-        expect(page.locator(".scenario-card.active")).to_be_visible(timeout=15000)
+        # Wait for the active drawer to appear (loading completes).
+        # The start_scenario Cloud Function may take 10-20s for initiate scenarios
+        # (it calls OpenAI to generate the starter email).
+        expect(page.locator(".scenario-card.active")).to_be_visible(timeout=30000)
         _snap(page, "07_scenario_started")
 
         # ── Step 6: Send email via Gmail API ─────────────────────
@@ -323,6 +331,8 @@ class TestHappyPath:
         # ── Step 7: Wait for score to appear in UI ───────────────
         # The score badge should appear on the card once grading completes.
         # Firestore real-time listener auto-updates the DOM.
+        # Note: a "Score pending..." badge may be visible immediately, so we
+        # check for actual score content (contains "/") not just visibility.
         score_locator = page.locator(
             f'.scenario-card[data-scenario-id="{scenario_id}"] .score-badge'
         )
@@ -330,9 +340,13 @@ class TestHappyPath:
         start_time = time.time()
         while time.time() - start_time < POLL_TIMEOUT:
             if score_locator.is_visible():
-                break
+                text = score_locator.inner_text()
+                if "/" in text:
+                    _log(f"Score appeared: {text}")
+                    break
             time.sleep(POLL_INTERVAL)
-            _snap(page, f"09_waiting_{int(time.time() - start_time)}s")
+            if int(time.time() - start_time) % 10 == 0:
+                _snap(page, f"09_waiting_{int(time.time() - start_time)}s")
         else:
             _snap(page, "09_TIMEOUT_no_score")
             pytest.fail(
@@ -346,7 +360,7 @@ class TestHappyPath:
 
         # Verify feedback section is also present
         feedback = page.locator(
-            f'.scenario-card[data-scenario-id="{SCENARIO_ID}"] .grading-results'
+            f'.scenario-card[data-scenario-id="{scenario_id}"] .grading-results'
         )
         expect(feedback).to_be_visible(timeout=5000)
         _snap(page, "10_DONE_score_visible")
