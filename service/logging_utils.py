@@ -1,19 +1,40 @@
 """
 Logging utilities for the PEB Service.
 
-Provides @log_function decorator that automatically logs:
-- Function entry with parameters
-- Function exit with duration and return value summary
-- Errors with full traceback
+Provides:
+- setup_cloud_logging(): configures structured JSON logging for Cloud Functions
+- @log_function decorator: automatically logs entry/exit/errors with timing
 """
 
 import functools
 import inspect
 import logging
+import os
 import time
 from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
+
+
+def setup_cloud_logging():
+    """Configure logging for the current environment.
+
+    On GCP (Cloud Functions sets K_SERVICE automatically):
+      Uses google-cloud-logging's StructuredLogHandler which outputs JSON
+      to stdout with proper severity, sourceLocation, and trace fields
+      that Cloud Logging parses natively.
+
+    Locally:
+      Falls back to standard basicConfig for readable console output.
+    """
+    if os.environ.get("K_SERVICE"):
+        # Running in Cloud Functions — use structured JSON logging
+        import google.cloud.logging
+        client = google.cloud.logging.Client()
+        client.setup_logging(log_level=logging.INFO)
+    else:
+        # Local development — plain text to console
+        logging.basicConfig(level=logging.INFO)
 
 # Parameter names whose values should be masked in logs
 SENSITIVE_PARAMS = frozenset({

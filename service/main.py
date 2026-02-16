@@ -43,10 +43,10 @@ from firebase_admin import auth as firebase_auth
 from .email_agent.scenario_loader import load_scenario
 from .email_agent.rubric_loader import load_rubric
 from .email_agent.email_agent import EmailAgent, EmailMessage
-from .logging_utils import log_function
+from .logging_utils import log_function, setup_cloud_logging
 
-# Setup Logging
-logging.basicConfig(level=logging.INFO)
+# Setup Logging — uses structured JSON on GCP, plain text locally
+setup_cloud_logging()
 logger = logging.getLogger(__name__)
 
 # Strip whitespace from secrets injected via --set-secrets (can have trailing \r\n)
