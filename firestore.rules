@@ -13,18 +13,48 @@ service cloud.firestore {
                  && data.firstName.size() <= 100
                  && !data.firstName.matches('.*[<>].*'));
     }
+    // Only these fields may be written from the client SDK.
+    // The backend uses Admin SDK (bypasses rules) for other writes.
+    function onlyAllowedFields() {
+      return request.resource.data.keys().hasOnly(
+        ['firstName', 'activeScenarioId', 'activeAttemptId']
+      );
+    }
 
     match /users/{email} {
       allow read: if request.auth != null
                   && request.auth.token.email == email;
-      allow write: if request.auth != null
-                   && request.auth.token.email == email
-                   && isValidFirstName(request.resource.data);
+
+      allow create: if request.auth != null
+                    && request.auth.token.email == email
+                    && onlyAllowedFields()
+                    && isValidFirstName(request.resource.data);
+
+      allow update: if request.auth != null
+                    && request.auth.token.email == email
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys()
+                         .hasOnly(['firstName', 'activeScenarioId', 'activeAttemptId'])
+                    && isValidFirstName(request.resource.data);
     }
     match /users/{email}/attempts/{attemptId} {
-      // Users can read and write their own attempts
-      allow read, write: if request.auth != null 
-                         && request.auth.token.email == email;
+      allow read: if request.auth != null
+                  && request.auth.token.email == email;
+
+      // Create: portal sets scenarioId, status, startedAt
+      allow create: if request.auth != null
+                    && request.auth.token.email == email
+                    && request.resource.data.keys().hasOnly(
+                         ['scenarioId', 'status', 'startedAt']
+                       );
+
+      // Update: portal can only change status (e.g. 'abandoned').
+      // Score, feedback, etc. are written by the backend via Admin SDK.
+      allow update: if request.auth != null
+                    && request.auth.token.email == email
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys()
+                         .hasOnly(['status']);
     }
   }
 }
