@@ -661,6 +661,11 @@ function renderDrawerPreview(scenario: ScenarioMetadata): string {
   // Previous grading results shown on load
   let gradingHtml = '';
   if (latestGraded) {
+    const gradedCount = attempts!.filter(a => a.status === 'graded').length;
+    const prevLink = gradedCount > 1
+      ? `<a href="#" class="prev-attempts-link" data-scenario-id="${scenario.id}">(View ${gradedCount - 1} previous)</a>`
+      : '';
+
     gradingHtml = `
       <div class="grading-results">
         <div class="grading-header">
@@ -673,6 +678,7 @@ function renderDrawerPreview(scenario: ScenarioMetadata): string {
         </div>
         <div class="graded-time">
           Graded at: ${latestGraded.gradedAt?.toLocaleString() || 'Unknown'}
+          ${prevLink}
         </div>
       </div>
     `;
