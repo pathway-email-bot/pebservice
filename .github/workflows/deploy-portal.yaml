@@ -7,6 +7,7 @@ on:
     paths:
       - 'portal/**'
       - 'service/email_agent/scenarios/**'
+      - 'tests/browser/**'
       - '.github/workflows/deploy-portal.yaml'
   workflow_dispatch:
 
