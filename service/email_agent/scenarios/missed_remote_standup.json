@@ -6,5 +6,6 @@
   "counterpart_role": "US-based engineering manager",
   "student_task": "You are a remote worker and you missed this morning's team standup because of a sudden power and internet outage in your area. The power just came back on. You were working on finishing the marketing materials for next week's product launch before the outage. No one has contacted you yet. Write a professional email to your manager, Jordan Smith, before they have to ask. Apologize briefly, explain what happened, give a short update on the marketing materials, and share your plan for the rest of the day. Show that you are proactive and reliable.",
   "counterpart_style": "You are a calm and supportive manager. You care about reliability and proactive communication. You appreciate when team members own their mistakes without being asked.",
+  "counterpart_context": "One of your team members did not attend this morning's daily standup meeting. No one has heard from them yet.",
   "grading_focus": "Focus on whether the student proactively takes responsibility, explains the situation clearly without long excuses, gives a concrete update on their work, and provides a plan for the rest of the day."
 }

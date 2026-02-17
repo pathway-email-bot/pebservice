@@ -6,6 +6,7 @@
   "counterpart_role": "Small business owner client",
   "student_task": "You are a freelance virtual assistant. Two weeks ago (on February 1st) you sent Invoice #147 to your client Alyssa Ward for 20 hours of work you completed in January, including calendar management, email inbox organization, and scheduling client calls. The invoice total is $500 and payment was due within 7 days. You have not received payment or any message about it. Write a polite follow-up email to Alyssa. Mention the invoice number, the date you sent it, the work it covers, and the amount. Ask kindly for an update on the payment. Use simple, respectful language without sounding angry or desperate.",
   "counterpart_style": "You are a small business owner who sometimes gets busy and forgets to pay on time. You appreciate clear, professional reminders that include the details you need.",
+  "counterpart_context": "Your virtual assistant sent you Invoice #147 about two weeks ago. You have not responded to it yet.",
   "grading_focus": "Focus on whether the student clearly mentions the invoice and date, keeps a polite and calm tone, and makes a clear request for an update on payment.",
   "starter_sender_name": "Alyssa Ward (Client)",
   "starter_subject": "Invoice for last month's support",

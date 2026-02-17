@@ -6,6 +6,7 @@
   "counterpart_role": "Operations supervisor",
   "student_task": "You are a remote data entry worker. Yesterday you sent your supervisor Daniel Green a spreadsheet called 'Q1 Regional Sales Summary.' Today you noticed an error: in the Midwest region row, you entered the March revenue as $12,400, but the correct amount is $14,200. The total for that region is also wrong because of this. Write an email to Daniel. Briefly apologize for the mistake, clearly explain which number was wrong and what the correct value is, mention that you have attached an updated version of the file, and point out exactly what changed. Keep it short and show that you take accuracy seriously.",
   "counterpart_style": "You are an operations supervisor who values honesty and accuracy. You prefer people tell you about mistakes quickly with clear corrections.",
+  "counterpart_context": "Your data entry worker sent you a spreadsheet called 'Q1 Regional Sales Summary' yesterday. You have not reviewed it in detail yet.",
   "grading_focus": "Focus on whether the student is honest about the mistake, keeps the explanation short and clear, mentions the corrected file, and shows responsibility without long excuses.",
   "starter_sender_name": "Daniel Green (Operations Supervisor)",
   "starter_subject": "Yesterday's data entry file",

@@ -38,6 +38,7 @@ class RubricScoreResult:
     name: str
     score: int
     max_score: int
+    justification: str = ""
 
 
 @dataclass(frozen=True)
@@ -147,8 +148,8 @@ SCENARIO:
 - Environment: {environment}
 - You are role-playing as: {counterpart_role}
 
-What the student is expected to do in this assignment:
-{student_task}
+What you (the counterpart) know about the situation before reading the student's email:
+{counterpart_context}
 
 How you (the counterpart) should sound:
 {counterpart_style}
@@ -212,11 +213,11 @@ Return your feedback as a single JSON object with this structure:
 
 {{
   "scores": [
-    {{"name": "<rubric item name>", "score": 1-5, "max_score": 5}},
+    {{"name": "<rubric item name>", "score": 1-5, "max_score": 5, "justification": "<1 sentence explaining why you gave this score>"}},
     ...
   ],
   "overall_comment": "<3-6 sentences of feedback in simple, kind English>",
-  "revision_example": "<a revised version of the student's email that is better but realistic>"
+  "revision_example": "<a revised version of the student's email that would score 100%. Keep it realistic and natural.>"
 }}
 
 Important:
@@ -258,20 +259,7 @@ class EmailAgent:
         )
 
     def _build_chain(self, template: str) -> RunnableSequence:
-        prompt = PromptTemplate(
-            template=template,
-            input_variables=[
-                "system_prompt",
-                "scenario_name",
-                "environment",
-                "counterpart_role",
-                "student_task",
-                "counterpart_style",
-                "grading_focus",
-                "email_thread",
-                "instructions",
-            ],
-        )
+        prompt = PromptTemplate.from_template(template)
         return prompt | self._llm | StrOutputParser()
 
     def _base_payload(self) -> Dict[str, str]:
@@ -328,6 +316,8 @@ class EmailAgent:
     ) -> str:
         """Generate the AI counterpart's reply to the current email thread."""
         payload = self._base_payload()
+        # Use counterpart_context (limited knowledge) instead of student_task
+        payload["counterpart_context"] = self.scenario.counterpart_context or ""
         payload["email_thread"] = _thread_to_text(thread)
         payload["instructions"] = (
             instructions.strip()
@@ -401,6 +391,7 @@ class EmailAgent:
                     name=item["name"],
                     score=score,
                     max_score=max_score,
+                    justification=str(item.get("justification", "")).strip(),
                 )
             )
             total_score += score

@@ -6,6 +6,7 @@
   "counterpart_role": "Operations lead",
   "student_task": "You are a new remote administrative assistant. Your operations lead Ravi Shah sent you a long message describing a multi-step process for handling customer requests, but a few parts are unclear to you. Reply to Ravi's email. Thank him for the instructions, briefly summarize what you understood, and ask 2–3 clear questions about the parts you do not understand. Use simple English and show that you want to learn and avoid mistakes.",
   "counterpart_style": "You are an operations lead who wants the process followed correctly. You appreciate when people summarize what they understood and then ask specific questions.",
+  "counterpart_context": "You sent the new assistant a detailed email explaining the multi-step process for handling customer requests.",
   "grading_focus": "Focus on whether the student gives a short summary of their understanding, asks specific questions, and keeps a respectful, learning-focused tone.",
   "starter_sender_name": "Ravi Shah (Operations Lead)",
   "starter_subject": "Process for handling customer requests",

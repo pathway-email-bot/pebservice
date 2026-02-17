@@ -73,7 +73,14 @@ class TestUpdateAttemptGraded:
                 .collection.return_value.document.return_value = mock_attempt_ref
 
             from service.firestore_client import update_attempt_graded
-            update_attempt_graded("test@example.com", "abc123", 18, 25, "Good work!")
+            update_attempt_graded(
+                "test@example.com", "abc123", 18, 25, "Good work!",
+                rubric_scores=[
+                    {"name": "Tone & respect", "score": 4, "maxScore": 5, "justification": "Good tone."},
+                    {"name": "Clarity", "score": 5, "maxScore": 5, "justification": "Very clear."},
+                ],
+                revision_example="Dear Manager, I apologize for..."
+            )
 
             mock_attempt_ref.update.assert_called_once()
             call_args = mock_attempt_ref.update.call_args[0][0]
@@ -81,3 +88,7 @@ class TestUpdateAttemptGraded:
             assert call_args["score"] == 18
             assert call_args["maxScore"] == 25
             assert call_args["feedback"] == "Good work!"
+            assert len(call_args["rubricScores"]) == 2
+            assert call_args["rubricScores"][0]["name"] == "Tone & respect"
+            assert call_args["rubricScores"][0]["justification"] == "Good tone."
+            assert call_args["revisionExample"] == "Dear Manager, I apologize for..."

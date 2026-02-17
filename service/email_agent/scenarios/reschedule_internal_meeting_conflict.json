@@ -6,6 +6,7 @@
   "counterpart_role": "Department manager",
   "student_task": "You are a remote administrative assistant. Your department manager Michael Johns sent a reminder about a team check-in, but you realize you have another important call at the same time. Reply to Michael's email. Apologize briefly, explain the conflict simply, suggest 1–2 new times for the meeting, and confirm that you still care about the topic. Use polite, simple English.",
   "counterpart_style": "You are a department manager who understands that schedules can change but dislikes last-minute surprises. You appreciate when people bring solutions, not just problems.",
+  "counterpart_context": "You sent a reminder about tomorrow's weekly team check-in at 10:00 AM.",
   "grading_focus": "Focus on whether the student clearly explains the conflict, suggests new times, keeps the message polite and short, and shows that they are still engaged with the work.",
   "starter_sender_name": "Michael Johns (Department Manager)",
   "starter_subject": "Reminder: team check-in tomorrow",

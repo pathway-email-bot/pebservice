@@ -4,6 +4,13 @@
 import { db, auth } from './firebase-config';
 import { collection, doc, onSnapshot, query, where, orderBy, limit, setDoc } from 'firebase/firestore';
 
+export interface RubricScore {
+    name: string;
+    score: number;
+    maxScore: number;
+    justification?: string;
+}
+
 export interface Attempt {
     id: string;
     scenarioId: string;
@@ -13,6 +20,8 @@ export interface Attempt {
     maxScore?: number;
     feedback?: string;
     gradedAt?: Date;
+    rubricScores?: RubricScore[];
+    revisionExample?: string;
 }
 
 export interface UserData {
@@ -108,6 +117,8 @@ export function listenToAttempts(callback: (attempts: Attempt[]) => void): () =>
                 maxScore: data.maxScore,
                 feedback: data.feedback,
                 gradedAt: data.gradedAt?.toDate(),
+                rubricScores: data.rubricScores,
+                revisionExample: data.revisionExample,
             };
         });
         console.info(`[Firestore] Loaded ${attempts.length} attempts`);
@@ -149,6 +160,8 @@ export function listenToActiveAttempt(callback: (attempt: Attempt | null) => voi
                 maxScore: data.maxScore,
                 feedback: data.feedback,
                 gradedAt: data.gradedAt?.toDate(),
+                rubricScores: data.rubricScores,
+                revisionExample: data.revisionExample,
             });
         }
     });
@@ -178,6 +191,8 @@ export function listenToAttempt(attemptId: string, callback: (attempt: Attempt |
                 maxScore: data.maxScore,
                 feedback: data.feedback,
                 gradedAt: data.gradedAt?.toDate(),
+                rubricScores: data.rubricScores,
+                revisionExample: data.revisionExample,
             });
         } else {
             console.warn(`[Firestore] Attempt ${attemptId} not found`);

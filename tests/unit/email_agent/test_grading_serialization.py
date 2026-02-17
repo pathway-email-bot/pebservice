@@ -18,9 +18,9 @@ def _sample_grading_result():
     return GradingResult(
         scenario_name="missed_remote_standup",
         scores=[
-            RubricScoreResult(name="Tone & respect", score=4, max_score=5),
-            RubricScoreResult(name="Clarity & conciseness", score=3, max_score=5),
-            RubricScoreResult(name="Structure", score=5, max_score=5),
+            RubricScoreResult(name="Tone & respect", score=4, max_score=5, justification="Polite and professional tone throughout."),
+            RubricScoreResult(name="Clarity & conciseness", score=3, max_score=5, justification="Could be more concise in the explanation."),
+            RubricScoreResult(name="Structure", score=5, max_score=5, justification="Clear greeting, body, and closing."),
         ],
         total_score=12,
         max_total_score=15,
@@ -43,7 +43,7 @@ class TestGradingResultToStorage:
     def test_preserves_scores(self):
         data = grading_result_to_storage(_sample_grading_result())
         assert len(data["rubric_scores"]) == 3
-        assert data["rubric_scores"][0] == {"name": "Tone & respect", "score": 4, "max_score": 5}
+        assert data["rubric_scores"][0] == {"name": "Tone & respect", "score": 4, "max_score": 5, "justification": "Polite and professional tone throughout."}
 
     def test_preserves_totals(self):
         data = grading_result_to_storage(_sample_grading_result())
@@ -96,6 +96,7 @@ class TestRoundTrip:
             assert rest.name == orig.name
             assert rest.score == orig.score
             assert rest.max_score == orig.max_score
+            assert rest.justification == orig.justification
 
     def test_empty_scores(self):
         """Round-trip with empty scores should work."""

@@ -15,6 +15,7 @@ def grading_result_to_storage(gr: GradingResult) -> Dict[str, Any]:
                 "name": s.name,
                 "score": s.score,
                 "max_score": s.max_score,
+                "justification": s.justification,
             }
             for s in gr.scores
         ],
@@ -37,6 +38,7 @@ def grading_result_from_storage(data: Dict[str, Any]) -> GradingResult:
             name=item["name"],
             score=int(item["score"]),
             max_score=int(item.get("max_score", 5)),
+            justification=str(item.get("justification", "")),
         )
         for item in data.get("rubric_scores", [])
     ]

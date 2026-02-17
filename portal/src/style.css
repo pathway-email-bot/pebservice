@@ -940,6 +940,102 @@ form .btn-primary {
   font-style: italic;
 }
 
+/* Rubric Breakdown */
+.rubric-breakdown {
+  margin-bottom: var(--spacing-md);
+}
+
+.rubric-breakdown>p {
+  margin-bottom: var(--spacing-sm);
+}
+
+.rubric-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--spacing-sm);
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.rubric-row:last-child {
+  border-bottom: none;
+}
+
+.rubric-name {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.rubric-score-bar {
+  width: 60px;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.rubric-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease-out;
+}
+
+.rubric-score-value {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  min-width: 28px;
+  text-align: right;
+}
+
+.rubric-justification {
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  padding-left: var(--spacing-sm);
+  border-left: 2px solid rgba(0, 0, 0, 0.06);
+  margin-top: 2px;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+/* Revision Example (collapsible) */
+.revision-example {
+  margin-bottom: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.revision-example summary {
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--color-primary-dark);
+  background: rgba(232, 119, 34, 0.04);
+  user-select: none;
+}
+
+.revision-example summary:hover {
+  background: rgba(232, 119, 34, 0.08);
+}
+
+.revision-body {
+  padding: var(--spacing-md);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  background: var(--color-bg-card);
+  border-top: 1px solid var(--color-border);
+}
+
+.revision-body p {
+  margin: 0;
+}
+
 /* ===== Badges ===== */
 .badge {
   display: inline-block;

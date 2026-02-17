@@ -75,7 +75,15 @@ def get_active_scenario(email: str) -> Optional[tuple[str, str]]:
     return None
 
 @log_function
-def update_attempt_graded(email: str, attempt_id: str, score: int, max_score: int, feedback: str):
+def update_attempt_graded(
+    email: str,
+    attempt_id: str,
+    score: int,
+    max_score: int,
+    feedback: str,
+    rubric_scores: list | None = None,
+    revision_example: str = "",
+):
     """
     Mark attempt as graded with results.
     
@@ -85,17 +93,24 @@ def update_attempt_graded(email: str, attempt_id: str, score: int, max_score: in
         score: Score achieved
         max_score: Maximum possible score
         feedback: Feedback text
+        rubric_scores: Per-rubric breakdown (list of dicts with name/score/maxScore/justification)
+        revision_example: Example improved version of the student's email
     """
     db = get_firestore_client()
     
     attempt_ref = db.collection('users').document(email).collection('attempts').document(attempt_id)
-    attempt_ref.update({
+    update_data = {
         'status': 'graded',
         'score': score,
         'maxScore': max_score,
         'feedback': feedback,
         'gradedAt': firestore.SERVER_TIMESTAMP,
-    })
+    }
+    if rubric_scores is not None:
+        update_data['rubricScores'] = rubric_scores
+    if revision_example:
+        update_data['revisionExample'] = revision_example
+    attempt_ref.update(update_data)
     
     # Clear active scenario if this was the active one
     user_ref = db.collection('users').document(email)

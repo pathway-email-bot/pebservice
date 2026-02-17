@@ -21,6 +21,9 @@ class Scenario:
     # Scenario-specific grading hints
     grading_focus: str = ""       # was grading_instructions
 
+    # What the counterpart realistically knows (used in reply prompt only)
+    counterpart_context: str = ""
+
     # Type of interaction
     interaction_type: str = "initiate"  # e.g. "initiate" or "respond"
 

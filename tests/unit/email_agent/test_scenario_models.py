@@ -19,6 +19,7 @@ class TestScenario:
             student_task="Write an email",
             interaction_type="initiate",
             counterpart_style="Professional",
+            counterpart_context="You know the student missed a meeting.",
             grading_focus="Clarity",
             starter_sender_name="John",
             starter_subject="Subject",
@@ -27,6 +28,7 @@ class TestScenario:
         )
         assert s.name == "Test Scenario"
         assert s.interaction_type == "initiate"
+        assert s.counterpart_context == "You know the student missed a meeting."
         assert s.starter_email_body == "Hello student"
 
     def test_defaults(self):
@@ -39,6 +41,7 @@ class TestScenario:
         )
         assert s.interaction_type == "initiate"
         assert s.counterpart_style == ""
+        assert s.counterpart_context == ""
         assert s.grading_focus == ""
         assert s.starter_sender_name == "Jordan Smith (Manager)"
         assert s.starter_subject == "Regarding your work today"

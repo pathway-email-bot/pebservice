@@ -274,25 +274,55 @@ def process_single_message(service, msg):
 
         # Update Firestore with grading results
         if result.grading:
+            # Build rubric breakdown for Firestore storage
+            rubric_scores = [
+                {
+                    "name": s.name,
+                    "score": s.score,
+                    "maxScore": s.max_score,
+                    "justification": s.justification,
+                }
+                for s in result.grading.scores
+            ]
             update_attempt_graded(
                 email=sender_email,
                 attempt_id=attempt_id,
                 score=result.grading.total_score,
                 max_score=result.grading.max_total_score,
-                feedback=result.grading.overall_comment
+                feedback=result.grading.overall_comment,
+                rubric_scores=rubric_scores,
+                revision_example=result.grading.revision_example,
             )
             logger.info(f"Updated Firestore: score={result.grading.total_score}/{result.grading.max_total_score}")
 
         # Send reply
         if result.counterpart_reply:
 
-            # Build a nice reply that includes the feedback
+            # Build rubric breakdown for the reply email
+            rubric_lines = []
+            for s in result.grading.scores:
+                line = f"  • {s.name}: {s.score}/{s.max_score}"
+                if s.justification:
+                    line += f" — {s.justification}"
+                rubric_lines.append(line)
+            rubric_section = "\n".join(rubric_lines)
+
+            # Build a nice reply that includes the detailed feedback
             reply_body = (
                 f"{result.counterpart_reply}\n\n"
                 f"--- FEEDBACK ---\n"
-                f"{result.grading.overall_comment}\n\n"
-                f"Score: {result.grading.total_score}/{result.grading.max_total_score}"
+                f"Score: {result.grading.total_score}/{result.grading.max_total_score}\n\n"
+                f"Rubric Breakdown:\n{rubric_section}\n\n"
+                f"{result.grading.overall_comment}"
             )
+
+            # Add revision example if available
+            if result.grading.revision_example:
+                reply_body += (
+                    f"\n\n--- EXAMPLE: How to get 100% ---\n"
+                    f"{result.grading.revision_example}"
+                )
+
             send_reply(service, msg, reply_body)
         else:
             logger.warning(f"Agent returned empty response for {sender}.")

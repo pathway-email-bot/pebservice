@@ -516,10 +516,12 @@ function updateScenarioWithGrading(scenarioId: string, attempt: Attempt): void {
             <h4>📊 Results</h4>
             <div class="score">Score: ${attempt.score}/${attempt.maxScore}</div>
         </div>
+        ${renderRubricBreakdown(attempt)}
         <div class="feedback">
             <p><strong>Feedback:</strong></p>
             <p>${escapeHtml(attempt.feedback || '')}</p>
         </div>
+        ${renderRevisionExample(attempt)}
         <div class="graded-time">
             Graded at: ${attempt.gradedAt?.toLocaleString() || 'Unknown'}
         </div>
@@ -601,11 +603,13 @@ function handleShowPreviousAttempts(e: Event): void {
               </div>
               <span class="score-indicator ${colorClass}">${score}/${maxScore}</span>
             </div>
+            ${renderRubricBreakdown(a)}
             ${a.feedback ? `
               <div class="attempt-feedback">
                 <p>${escapeHtml(a.feedback)}</p>
               </div>
             ` : ''}
+            ${renderRevisionExample(a)}
           `;
   }).join('')}
       </div>
@@ -621,6 +625,49 @@ function handleShowPreviousAttempts(e: Event): void {
   document.body.appendChild(modal);
 }
 
+/** Render per-rubric score breakdown table */
+function renderRubricBreakdown(attempt: Attempt): string {
+  if (!attempt.rubricScores || attempt.rubricScores.length === 0) return '';
+
+  const rows = attempt.rubricScores.map(rs => {
+    const pct = Math.round((rs.score / rs.maxScore) * 100);
+    let barColor = 'var(--color-error)';
+    if (pct >= 80) barColor = 'var(--color-success)';
+    else if (pct >= 50) barColor = 'var(--color-warning, #f0ad4e)';
+
+    return `
+      <div class="rubric-row">
+        <div class="rubric-name">${escapeHtml(rs.name)}</div>
+        <div class="rubric-score-bar">
+          <div class="rubric-bar-fill" style="width: ${pct}%; background: ${barColor}"></div>
+        </div>
+        <div class="rubric-score-value">${rs.score}/${rs.maxScore}</div>
+        ${rs.justification ? `<div class="rubric-justification">${escapeHtml(rs.justification)}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="rubric-breakdown">
+      <p><strong>Rubric Breakdown:</strong></p>
+      ${rows}
+    </div>
+  `;
+}
+
+/** Render collapsible revision example */
+function renderRevisionExample(attempt: Attempt): string {
+  if (!attempt.revisionExample) return '';
+
+  return `
+    <details class="revision-example">
+      <summary>\ud83d\udca1 Example: How to get 100%</summary>
+      <div class="revision-body">
+        <p>${escapeHtml(attempt.revisionExample).replace(/\n/g, '<br>')}</p>
+      </div>
+    </details>
+  `;
+}
 
 
 /** Active attempt drawer content (after Cloud Function returns) */
@@ -672,10 +719,12 @@ function renderDrawerPreview(scenario: ScenarioMetadata): string {
           <h4>📊 Latest Result</h4>
           <div class="score">Score: ${latestGraded.score}/${latestGraded.maxScore}</div>
         </div>
+        ${renderRubricBreakdown(latestGraded)}
         <div class="feedback">
           <p><strong>Feedback:</strong></p>
           <p>${escapeHtml(latestGraded.feedback || 'No feedback available')}</p>
         </div>
+        ${renderRevisionExample(latestGraded)}
         <div class="graded-time">
           Graded at: ${latestGraded.gradedAt?.toLocaleString() || 'Unknown'}
           ${prevLink}

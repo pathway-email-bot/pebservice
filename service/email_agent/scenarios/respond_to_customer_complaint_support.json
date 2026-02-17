@@ -6,6 +6,7 @@
   "counterpart_role": "Customer of a small online business",
   "student_task": "You are a remote customer support assistant for a small online business. A customer named Alex Carter wrote to say they are unhappy because it took a long time to get a reply or there was a small mistake in their order. Reply to Alex's email. Thank them for writing, apologize briefly, explain in simple English what you can do to help, and clearly state the next step (for example, correction, refund, or updated information). Keep the tone calm, respectful, and reassuring.",
   "counterpart_style": "You are a customer who is slightly frustrated but polite. You simply want your problem to be acknowledged and fixed.",
+  "counterpart_context": "You are a customer who wrote about a wrong item color in your recent order and a delayed support response.",
   "grading_focus": "Focus on whether the student apologizes appropriately, shows understanding of the customer's problem, explains the solution clearly, and keeps a respectful and reassuring tone.",
   "starter_sender_name": "Alex Carter (Customer)",
   "starter_subject": "Concern about my recent order",

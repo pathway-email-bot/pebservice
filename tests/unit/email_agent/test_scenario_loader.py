@@ -23,7 +23,7 @@ def _scenario_files():
 REQUIRED_FIELDS = {"name", "description", "environment", "counterpart_role", "student_task"}
 
 KNOWN_FIELDS = REQUIRED_FIELDS | {
-    "interaction_type", "counterpart_style", "grading_focus",
+    "interaction_type", "counterpart_style", "counterpart_context", "grading_focus",
     "starter_sender_name", "starter_subject", "starter_email_body",
     "starter_email_generation_hint",
 }
