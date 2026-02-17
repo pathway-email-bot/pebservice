@@ -8,10 +8,23 @@ import uuid
 
 from .logging_utils import log_function
 
+# Module-level cached client
+_db: firestore.Client | None = None
+
+
 @log_function
 def get_firestore_client():
-    """Returns Firestore client (uses default credentials in Cloud Functions)"""
-    return firestore.Client(database='pathway')
+    """Returns cached Firestore client (uses default credentials in Cloud Functions)."""
+    global _db
+    if _db is None:
+        _db = firestore.Client(database='pathway')
+    return _db
+
+
+def _reset_client():
+    """Reset the cached client (for testing only)."""
+    global _db
+    _db = None
 
 @log_function
 def create_attempt(email: str, scenario_id: str) -> str:

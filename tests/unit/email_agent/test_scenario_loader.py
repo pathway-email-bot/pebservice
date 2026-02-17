@@ -61,7 +61,11 @@ class TestScenarioJsonValidation:
         """interaction_type must be 'initiate' or 'reply' if present."""
         data = json.loads(scenario_path.read_text(encoding="utf-8"))
         if "interaction_type" in data:
-            assert data["interaction_type"] in ("initiate", "reply"), (
+            from service.email_agent.scenario_models import InteractionType
+            assert data["interaction_type"] in (
+                InteractionType.INITIATE.value,
+                InteractionType.REPLY.value,
+            ), (
                 f"{scenario_path.name}: got '{data['interaction_type']}'"
             )
 

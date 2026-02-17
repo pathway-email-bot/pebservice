@@ -28,7 +28,7 @@ class TestRubricItem:
 
 class TestGlobalRubric:
     def test_has_items(self):
-        assert len(GLOBAL_RUBRIC) >= 5
+        assert len(GLOBAL_RUBRIC) >= 7
 
     def test_all_items_are_rubric_items(self):
         for item in GLOBAL_RUBRIC:
@@ -43,6 +43,9 @@ class TestGlobalRubric:
     def test_expected_rubric_names(self):
         names = {item.name for item in GLOBAL_RUBRIC}
         assert "Tone & respect" in names
-        assert "Clarity & conciseness" in names
-        assert "Structure" in names
-        assert "Task fulfillment" in names
+        assert "Clarity & purpose" in names
+        assert "Structure & formatting" in names
+        assert "Professionalism & responsibility" in names
+        assert "Task fulfillment & actionable next steps" in names
+        assert "Grammar & readability" in names
+        assert "Subject line" in names

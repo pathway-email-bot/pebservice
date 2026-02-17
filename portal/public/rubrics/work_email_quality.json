@@ -1,0 +1,41 @@
+{
+  "name": "work_email_quality",
+  "description": "Evaluates professionalism, clarity, tone, and structure of a work-related email for effective communication in a global context.",
+  "items": [
+    {
+      "name": "clarity_and_purpose",
+      "description": "The email clearly states its purpose early on and is easy to follow. The reader should immediately understand why the message was sent and what action (if any) is requested.",
+      "max_score": 5
+    },
+    {
+      "name": "tone_and_politeness",
+      "description": "The tone is respectful, polite, and culturally appropriate for a professional setting. It avoids slang, excessive informality, or abruptness.",
+      "max_score": 5
+    },
+    {
+      "name": "structure_and_formatting",
+      "description": "The email has a logical flow, with a greeting, body, and closing. Paragraphs are organized and the formatting supports readability (line breaks, spacing, no all-caps, etc.).",
+      "max_score": 5
+    },
+    {
+      "name": "grammar_and_spelling",
+      "description": "Spelling, punctuation, and grammar are correct enough not to distract or confuse the reader.",
+      "max_score": 5
+    },
+    {
+      "name": "conciseness_and_relevance",
+      "description": "The message is concise and focused on relevant details, avoiding unnecessary repetition or off-topic content.",
+      "max_score": 5
+    },
+    {
+      "name": "professional_signoff_and_tone_consistency",
+      "description": "The closing matches the tone of the message and includes a clear signoff with name and/or role. Tone remains consistent throughout the email.",
+      "max_score": 5
+    },
+    {
+      "name": "cultural_and_contextual_fit",
+      "description": "The message fits expected professional norms for global remote work (e.g., polite requests, awareness of time zones, indirectness when appropriate).",
+      "max_score": 5
+    }
+  ]
+}

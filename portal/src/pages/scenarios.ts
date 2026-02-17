@@ -333,6 +333,11 @@ function attachScenarioHandlers(): void {
   document.querySelectorAll('.prev-attempts-link').forEach(link => {
     link.addEventListener('click', handleShowPreviousAttempts);
   });
+
+  // See Rubric link handlers
+  document.querySelectorAll('.see-rubric-link').forEach(link => {
+    link.addEventListener('click', handleShowRubric);
+  });
 }
 
 function handleToggleDrawer(e: Event): void {
@@ -625,6 +630,82 @@ function handleShowPreviousAttempts(e: Event): void {
   document.body.appendChild(modal);
 }
 
+/** Fetch rubric criteria from deployed JSON (cached after first load) */
+let cachedRubricItems: { name: string; description: string }[] | null = null;
+
+async function loadRubricCriteria(): Promise<{ name: string; description: string }[]> {
+  if (cachedRubricItems) return cachedRubricItems;
+
+  try {
+    const response = await fetch('./rubrics/peb_rubric_v1.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    cachedRubricItems = (data.items || []).map((item: { name: string; description: string }) => ({
+      name: item.name,
+      description: item.description,
+    }));
+    return cachedRubricItems!;
+  } catch (error) {
+    console.warn('Failed to load rubric JSON, using empty fallback:', error);
+    return [];
+  }
+}
+
+async function handleShowRubric(e: Event): Promise<void> {
+  e.preventDefault();
+  const scenarioId = (e.target as HTMLElement).dataset.scenarioId;
+  if (!scenarioId) return;
+
+  const scenario = currentScenarios.find(s => s.id === scenarioId);
+  if (!scenario) return;
+
+  const criteria = await loadRubricCriteria();
+
+  const criteriaRows = criteria.length > 0
+    ? criteria.map(c => `
+      <div class="rubric-criteria-row">
+        <div class="rubric-criteria-name">${escapeHtml(c.name)}</div>
+        <div class="rubric-criteria-desc">${escapeHtml(c.description)}</div>
+      </div>
+    `).join('')
+    : '<p style="color: var(--color-text-muted)">Could not load rubric criteria.</p>';
+
+  const modal = document.createElement('div');
+  modal.className = 'attempts-modal-overlay';
+  modal.innerHTML = `
+    <div class="attempts-modal rubric-modal">
+      <div class="attempts-modal-header">
+        <h3>📋 Grading Rubric</h3>
+        <button class="attempts-modal-close">&times;</button>
+      </div>
+      <div class="attempts-modal-body">
+        <div class="rubric-focus-section">
+          <h4>🎯 Scenario Focus</h4>
+          <p>${escapeHtml(scenario.grading_focus)}</p>
+        </div>
+        <div class="rubric-criteria-section">
+          <h4>📊 General Criteria <span class="rubric-scale-label">(each scored 1–5)</span></h4>
+          <div class="rubric-scale-legend">
+            <span>1 = Needs Work</span>
+            <span>2 = Developing</span>
+            <span>3 = Acceptable</span>
+            <span>4 = Good</span>
+            <span>5 = Excellent</span>
+          </div>
+          ${criteriaRows}
+        </div>
+      </div>
+    </div>
+  `;
+
+  modal.querySelector('.attempts-modal-close')?.addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+
+  document.body.appendChild(modal);
+}
+
 /** Render per-rubric score breakdown table */
 function renderRubricBreakdown(attempt: Attempt): string {
   if (!attempt.rubricScores || attempt.rubricScores.length === 0) return '';
@@ -677,6 +758,7 @@ function renderDrawerActive(scenario: ScenarioMetadata): string {
       <div class="task-section">
         <h4>📝 Your Task</h4>
         <p>${scenario.student_task}</p>
+        <a href="#" class="see-rubric-link" data-scenario-id="${scenario.id}">📋 See Rubric</a>
       </div>
       
       <div class="instructions-section">
@@ -738,6 +820,7 @@ function renderDrawerPreview(scenario: ScenarioMetadata): string {
       <div class="task-section">
         <h4>📝 Your Task</h4>
         <p>${scenario.student_task}</p>
+        <a href="#" class="see-rubric-link" data-scenario-id="${scenario.id}">📋 See Rubric</a>
       </div>
 
       <div class="drawer-actions">

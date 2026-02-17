@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 from dataclasses import dataclass
+from enum import Enum
 from typing import Optional
+
+
+class InteractionType(str, Enum):
+    """Whether the student initiates or replies to an email."""
+    INITIATE = "initiate"
+    REPLY = "reply"
 
 
 @dataclass(frozen=True)
@@ -25,7 +32,7 @@ class Scenario:
     counterpart_context: str = ""
 
     # Type of interaction
-    interaction_type: str = "initiate"  # e.g. "initiate" or "respond"
+    interaction_type: InteractionType = InteractionType.INITIATE
 
     # Starter email
     starter_sender_name: str = "Jordan Smith (Manager)"
@@ -34,3 +41,11 @@ class Scenario:
     starter_email_generation_hint: str = (
         "Write a realistic starter email for the situation, 1-3 short paragraphs."
     )
+
+    def __post_init__(self):
+        # Coerce plain strings from JSON into the enum
+        if isinstance(self.interaction_type, str):
+            # frozen=True requires object.__setattr__
+            object.__setattr__(
+                self, 'interaction_type', InteractionType(self.interaction_type)
+            )

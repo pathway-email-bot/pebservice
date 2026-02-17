@@ -1,0 +1,31 @@
+{
+  "name": "default_training_rubric",
+  "description": "General-purpose rubric for remote-work etiquette emails.",
+  "items": [
+    {
+      "name": "Tone & respect",
+      "description": "Email is polite and respectful, not too casual or emotional.",
+      "max_score": 5
+    },
+    {
+      "name": "Clarity & conciseness",
+      "description": "Message is easy to understand and not too long.",
+      "max_score": 5
+    },
+    {
+      "name": "Structure",
+      "description": "Email has a clear greeting, organized body, and proper closing.",
+      "max_score": 5
+    },
+    {
+      "name": "Professionalism & responsibility",
+      "description": "Student takes responsibility where needed and shows commitment.",
+      "max_score": 5
+    },
+    {
+      "name": "Task fulfillment",
+      "description": "Student clearly answers the request or makes a clear ask.",
+      "max_score": 5
+    }
+  ]
+}

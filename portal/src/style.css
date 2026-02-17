@@ -1036,6 +1036,91 @@ form .btn-primary {
   margin: 0;
 }
 
+/* ===== See Rubric link ===== */
+.see-rubric-link {
+  display: inline-block;
+  margin-top: var(--spacing-sm);
+  font-size: 0.88rem;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.see-rubric-link:hover {
+  color: var(--color-primary-dark);
+  text-decoration: underline;
+}
+
+/* Rubric modal (extends attempts-modal) */
+.rubric-modal {
+  max-width: 520px;
+}
+
+.rubric-focus-section {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: #FFF8E1;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-warning, #f0ad4e);
+}
+
+.rubric-focus-section h4 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.rubric-focus-section p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.rubric-criteria-section h4 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.rubric-scale-label {
+  font-weight: 400;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.rubric-scale-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.rubric-criteria-row {
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rubric-criteria-row:last-child {
+  border-bottom: none;
+}
+
+.rubric-criteria-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.rubric-criteria-desc {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
 /* ===== Badges ===== */
 .badge {
   display: inline-block;
