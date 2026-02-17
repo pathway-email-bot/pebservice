@@ -479,6 +479,10 @@ form .btn-primary {
 }
 
 /* Drawer actions (Start button container) */
+.drawer-actions+.grading-results {
+  margin-top: var(--spacing-lg);
+}
+
 .drawer-actions {
   margin-top: var(--spacing-lg);
   display: flex;
