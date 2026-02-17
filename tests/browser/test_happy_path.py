@@ -180,16 +180,22 @@ def _find_magic_link(gmail_service, timeout: int = MAGIC_LINK_WAIT, sent_after: 
 
         messages = results.get("messages", [])
         if first_poll:
-            _log(f"  Gmail poll: {len(messages)} candidates (sent_after={sent_after:.0f})")
-            # Log each candidate's timestamp for debugging
+            from datetime import datetime, timezone
+            cutoff_utc = datetime.fromtimestamp(sent_after, tz=timezone.utc).strftime("%H:%M:%S")
+            _log(f"  Gmail poll: {len(messages)} candidates (cutoff={cutoff_utc} UTC)")
             for m in messages:
                 meta = gmail_service.users().messages().get(
                     userId="me", id=m["id"], format="metadata",
-                    metadataHeaders=["Date"],
+                    metadataHeaders=["Subject"],
                 ).execute()
                 ts = int(meta.get("internalDate", "0")) / 1000
+                ts_utc = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%H:%M:%S")
                 delta = ts - sent_after
-                _log(f"    candidate: internalDate={ts:.0f} (delta={delta:+.0f}s)")
+                subj = ""
+                for h in meta.get("payload", {}).get("headers", []):
+                    if h["name"] == "Subject":
+                        subj = h["value"][:50]
+                _log(f"    {ts_utc} UTC (delta={delta:+.0f}s) {subj}")
             first_poll = False
 
         for msg_meta in messages:
