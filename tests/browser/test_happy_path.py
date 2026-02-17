@@ -49,7 +49,7 @@ SCENARIO_ID = "missed_remote_standup"
 
 POLL_TIMEOUT = 120  # seconds to wait for grading
 POLL_INTERVAL = 5   # seconds between polls
-MAGIC_LINK_WAIT = 10  # seconds to wait for Firebase to deliver the email
+MAGIC_LINK_WAIT = 30  # seconds to wait for Firebase + Gmail API indexing delay
 
 # Output directory (tests/browser/output/)
 OUTPUT_DIR = Path(__file__).resolve().parent / "output"
@@ -180,7 +180,16 @@ def _find_magic_link(gmail_service, timeout: int = MAGIC_LINK_WAIT, sent_after: 
 
         messages = results.get("messages", [])
         if first_poll:
-            _log(f"  Gmail poll: {len(messages)} candidate messages (sent_after={sent_after:.0f})")
+            _log(f"  Gmail poll: {len(messages)} candidates (sent_after={sent_after:.0f})")
+            # Log each candidate's timestamp for debugging
+            for m in messages:
+                meta = gmail_service.users().messages().get(
+                    userId="me", id=m["id"], format="metadata",
+                    metadataHeaders=["Date"],
+                ).execute()
+                ts = int(meta.get("internalDate", "0")) / 1000
+                delta = ts - sent_after
+                _log(f"    candidate: internalDate={ts:.0f} (delta={delta:+.0f}s)")
             first_poll = False
 
         for msg_meta in messages:
@@ -259,7 +268,7 @@ class TestHappyPath:
         email_input = page.locator("#email")
         email_input.fill(TEST_EMAIL)
 
-        send_time = time.time()  # record BEFORE clicking — prevents clock skew from filtering the email
+        send_time = time.time() - 5  # record BEFORE clicking, with 5s buffer for clock skew
         page.locator("#submit-btn").click()
 
         # Should see confirmation message
