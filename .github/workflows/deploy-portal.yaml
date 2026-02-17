@@ -97,3 +97,11 @@ jobs:
 
       - name: Run browser E2E test
         run: python -m pytest tests/browser/ -v --timeout=180
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-output
+          path: tests/browser/output/
+          retention-days: 7
