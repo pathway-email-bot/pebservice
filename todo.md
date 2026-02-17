@@ -2,10 +2,10 @@
 
 ## Future Considerations 🤔
 
-- [ ] **Browser-based sign-in test** (playwright) — automate login flow verification
+- [x] **Browser-based sign-in test** (playwright) — automate login flow verification
 - [ ] **Investigate how we can not be marked as spam**
 - [ ] **Share with Tom Kerby**
-- [ ] **Audit API quotas for `pathwayemailbot@gmail.com` and test email** — we're using a single Gmail address like a web service; review quotas/rate limits for every API we call (Gmail send, Gmail watch, Gmail history, Firebase Auth, Firestore, OpenAI, Secret Manager) and document in a table
+- [x] **Audit API quotas for `pathwayemailbot@gmail.com` and test email** — we're using a single Gmail address like a web service; review quotas/rate limits for every API we call (Gmail send, Gmail watch, Gmail history, Firebase Auth, Firestore, OpenAI, Secret Manager) and document in a table. See `design_docs/current_working/gmail_api_quota_audit.md`.
 
 ## UX Fixes
 
