@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: cd portal && npm ci
       
+      - name: Run unit tests
+        run: cd portal && npm test
+      
       - name: Copy scenario files from service
         run: |
           mkdir -p portal/public/scenarios
