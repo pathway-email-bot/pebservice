@@ -518,7 +518,7 @@ function updateScenarioWithGrading(scenarioId: string, attempt: Attempt): void {
         </div>
         <div class="feedback">
             <p><strong>Feedback:</strong></p>
-            <p>${attempt.feedback}</p>
+            <p>${escapeHtml(attempt.feedback || '')}</p>
         </div>
         <div class="graded-time">
             Graded at: ${attempt.gradedAt?.toLocaleString() || 'Unknown'}
@@ -603,7 +603,7 @@ function handleShowPreviousAttempts(e: Event): void {
             </div>
             ${a.feedback ? `
               <div class="attempt-feedback">
-                <p>${a.feedback}</p>
+                <p>${escapeHtml(a.feedback)}</p>
               </div>
             ` : ''}
           `;
@@ -669,7 +669,7 @@ function renderDrawerPreview(scenario: ScenarioMetadata): string {
         </div>
         <div class="feedback">
           <p><strong>Feedback:</strong></p>
-          <p>${latestGraded.feedback || 'No feedback available'}</p>
+          <p>${escapeHtml(latestGraded.feedback || 'No feedback available')}</p>
         </div>
         <div class="graded-time">
           Graded at: ${latestGraded.gradedAt?.toLocaleString() || 'Unknown'}
@@ -719,14 +719,7 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean, isA
     `;
   }
 
-  // Build previous attempts link
-  const prevAttemptsLink = (() => {
-    const atts = attemptsByScenario.get(scenario.id);
-    if (!atts) return '';
-    const gradedCount = atts.filter(a => a.status === 'graded').length;
-    if (gradedCount === 0) return '';
-    return `<a href="#" class="prev-attempts-link" data-scenario-id="${scenario.id}">(${gradedCount} previous)</a>`;
-  })();
+  // Previous attempts link is already included in headerScoreHtml via getScoreIndicator()
 
   // Determine drawer content
   let drawerHtml = '';
@@ -755,7 +748,6 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean, isA
         </div>
         <div class="scenario-actions">
           ${headerScoreHtml}
-          ${prevAttemptsLink}
         </div>
       </div>
       
