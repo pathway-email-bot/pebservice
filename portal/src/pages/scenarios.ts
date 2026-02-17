@@ -647,7 +647,7 @@ function renderDrawerActive(scenario: ScenarioMetadata): string {
       </div>
       
       <div class="status-section">
-        <p class="pending-status">🤗 You're all set! Compose your best email and send it to pathwayemailbot@gmail.com — we'll be here when it arrives 💛</p>
+        <p class="pending-status">🤗 We are waiting for your email! Compose your best email and send it to pathwayemailbot@gmail.com 💛</p>
       </div>
     </div>
   `;
