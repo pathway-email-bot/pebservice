@@ -27,7 +27,7 @@ import base64
 import json
 import os
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import functions_framework
@@ -69,7 +69,6 @@ BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_RUBRIC_PATH = BASE_DIR / "email_agent/rubrics/peb_rubric_v1.json"
 BOT_EMAIL = "pathwayemailbot@gmail.com"
 CORS_ORIGIN = "https://pathway-email-bot.github.io"
-_RATE_LIMIT_SECONDS = 30  # per-user cooldown for start_scenario
 
 # Canary log to verify logging is working in Cloud Functions
 logger.info("PEB Service module loaded. Logging is operational.")
@@ -389,23 +388,9 @@ def start_scenario(request: Request):
             logger.warning(f"Email mismatch: token={token_email}, request={student_email}")
             return {'error': 'Cannot start scenario for another user'}, 403, cors_headers
 
-        # --- Rate limiting: per-user cooldown ---
+        # Load scenario
         from .firestore_client import get_firestore_client, create_attempt
         db = get_firestore_client()
-        recent_cutoff = datetime.now(timezone.utc) - timedelta(seconds=_RATE_LIMIT_SECONDS)
-        recent_attempts = (
-            db.collection('users').document(student_email)
-            .collection('attempts')
-            .where('startedAt', '>=', recent_cutoff)
-            .limit(1)
-            .get()
-        )
-        if len(list(recent_attempts)) > 0:
-            return {
-                'error': f'Please wait {_RATE_LIMIT_SECONDS} seconds between starting scenarios'
-            }, 429, cors_headers
-
-        # Load scenario
         scenario_path = BASE_DIR / 'email_agent' / 'scenarios' / f'{scenario_id}.json'
         if not scenario_path.exists():
             logger.warning(f"Scenario not found: {scenario_id}")
