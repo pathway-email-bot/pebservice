@@ -442,6 +442,32 @@ form .btn-primary {
   color: #7B1FA2;
 }
 
+/* Active scenario badge — green pill with gentle pulse */
+.active-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: #dcfce7;
+  color: #166534;
+  margin-left: var(--spacing-sm);
+  vertical-align: middle;
+  animation: gentle-pulse 2s ease-in-out infinite;
+}
+
+@keyframes gentle-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
 /* Expanded card state (distinct from active) */
 .scenario-card.expanded {
   border-color: var(--color-border);
@@ -483,24 +509,6 @@ form .btn-primary {
   line-height: 1.5;
 }
 
-/* Shimmer loading blocks */
-.shimmer-block {
-  background: linear-gradient(90deg, #f0ebe4 25%, #e8e0d4 50%, #f0ebe4 75%);
-  background-size: 200% 100%;
-  animation: shimmer 2.5s ease-in-out infinite;
-  border-radius: var(--radius-sm);
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
-}
-
 /* Drawer UI */
 .scenario-drawer {
   margin-top: var(--spacing-lg);
@@ -523,7 +531,7 @@ form .btn-primary {
   }
 }
 
-/* Fade-in for real content replacing shimmer */
+/* Fade-in for drawer content */
 .drawer-content-loaded {
   animation: fadeInContent 0.6s ease-out;
 }

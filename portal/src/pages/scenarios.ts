@@ -17,7 +17,7 @@ import { devmode } from '../devmode';
 let currentScenarios: ScenarioMetadata[] = [];
 let expandedScenarioId: string | null = null;   // which drawer is open (read-only preview)
 let activeScenarioId: string | null = null;      // which has a live pending attempt
-let isDrawerLoading = false;
+
 let attemptUnsubscribe: (() => void) | null = null;
 let attemptsUnsubscribe: (() => void) | null = null;
 let userDataUnsubscribe: (() => void) | null = null;
@@ -26,8 +26,8 @@ let studentFirstName: string | null = null;
 // Attempts grouped by scenario: scenarioId -> Attempt[] (sorted newest first)
 let attemptsByScenario: Map<string, Attempt[]> = new Map();
 
-// Stale attempt threshold: 24 hours
-const STALE_ATTEMPT_MS = 24 * 60 * 60 * 1000;
+// Stale attempt threshold: 1 hour
+const STALE_ATTEMPT_MS = 60 * 60 * 1000;
 
 export async function renderScenariosPage(container: HTMLElement): Promise<void> {
   // main.ts handles auth routing — if we're here, user should be logged in
@@ -388,15 +388,16 @@ async function handleStartScenario(e: Event): Promise<void> {
   const scenario = currentScenarios.find(s => s.id === scenarioId);
   if (!scenario) return;
 
-  // Drawer is already open (Start button is inside it) — switch to loading
+  // Drawer is already open (Start button is inside it) — disable button + show spinner
   activeScenarioId = scenarioId;
-  isDrawerLoading = true;
 
-  // Swap only the drawer internals (avoids re-triggering expand animation)
-  const drawer = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"] .scenario-drawer`);
-  if (drawer) {
-    drawer.innerHTML = renderDrawerLoading();
+  const startBtn = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"] .start-btn`) as HTMLButtonElement | null;
+  if (startBtn) {
+    startBtn.disabled = true;
+    startBtn.innerHTML = '<span class="spinner"></span> Setting active scenario…';
   }
+
+  const drawer = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"] .scenario-drawer`);
   // Update header to show active styling
   const card = document.querySelector(`.scenario-card[data-scenario-id="${scenarioId}"]`);
   card?.classList.add('active');
@@ -405,8 +406,7 @@ async function handleStartScenario(e: Event): Promise<void> {
     // Call start_scenario Cloud Function (creates attempt + sends email for REPLY)
     const result = await startScenario(scenarioId);
 
-    // Loading done — swap drawer content in-place
-    isDrawerLoading = false;
+    // Cloud Function returned — swap drawer content to active state
     if (drawer) {
       drawer.innerHTML = renderDrawerActive(scenario);
       // Re-attach copy-email handler
@@ -447,7 +447,6 @@ async function handleStartScenario(e: Event): Promise<void> {
 
     // Reset active state but keep drawer open
     activeScenarioId = null;
-    isDrawerLoading = false;
     rerenderScenarios();
 
     // Show error on the card
@@ -622,16 +621,7 @@ function handleShowPreviousAttempts(e: Event): void {
   document.body.appendChild(modal);
 }
 
-/** Shimmer loading blocks for the drawer */
-function renderDrawerLoading(): string {
-  return `
-    <div class="shimmer-block" style="height: 1.2em; width: 40%; margin-bottom: 12px;"></div>
-    <div class="shimmer-block" style="height: 3em; width: 100%; margin-bottom: 16px;"></div>
-    <div class="shimmer-block" style="height: 1.2em; width: 50%; margin-bottom: 12px;"></div>
-    <div class="shimmer-block" style="height: 4em; width: 100%; margin-bottom: 16px;"></div>
-    <div class="shimmer-block" style="height: 2em; width: 70%;"></div>
-  `;
-}
+
 
 /** Active attempt drawer content (after Cloud Function returns) */
 function renderDrawerActive(scenario: ScenarioMetadata): string {
@@ -695,24 +685,14 @@ function renderDrawerPreview(scenario: ScenarioMetadata): string {
         <p>${scenario.student_task}</p>
       </div>
 
-      <div class="task-section">
-        <h4>🎯 Grading Focus</h4>
-        <p>${scenario.grading_focus}</p>
-      </div>
-
-      <div class="task-section">
-        <h4>🏢 Environment</h4>
-        <p>${scenario.environment.replace(/_/g, ' ')}</p>
-      </div>
-
-      ${gradingHtml}
-
       <div class="drawer-actions">
         <div class="error-message" style="display: none;"></div>
         <button class="btn btn-primary start-btn" data-scenario-id="${scenario.id}">
           ${scenario.interaction_type === 'initiate' ? '📤 Start — You Send First' : '📥 Start — You\'ll Receive an Email'}
         </button>
       </div>
+
+      ${gradingHtml}
     </div>
   `;
 }
@@ -751,9 +731,7 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean, isA
   // Determine drawer content
   let drawerHtml = '';
   if (isExpanded) {
-    if (isActive && isDrawerLoading) {
-      drawerHtml = renderDrawerLoading();
-    } else if (isActive) {
+    if (isActive) {
       drawerHtml = renderDrawerActive(scenario);
     } else {
       drawerHtml = renderDrawerPreview(scenario);
@@ -770,6 +748,7 @@ function renderScenarioCard(scenario: ScenarioMetadata, isExpanded: boolean, isA
             <span class="expand-icon">${expandIcon}</span>
             ${scenario.name}
             ${interactionBadge}
+            ${isActive ? '<span class="active-badge">🟢 Active Scenario</span>' : ''}
           </h3>
           <p class="scenario-description">${scenario.description}</p>
           <p class="scenario-role"><strong>Counterpart:</strong> ${scenario.counterpart_role}</p>
