@@ -258,6 +258,8 @@ class TestHappyPath:
 
         email_input = page.locator("#email")
         email_input.fill(TEST_EMAIL)
+
+        send_time = time.time()  # record BEFORE clicking — prevents clock skew from filtering the email
         page.locator("#submit-btn").click()
 
         # Should see confirmation message
@@ -265,7 +267,6 @@ class TestHappyPath:
         _snap(page, "02_magic_link_sent")
 
         # ── Step 2: Get magic link from Gmail ────────────────────
-        send_time = time.time()  # record when we sent the link
         magic_link = _find_magic_link(gmail, sent_after=send_time)
         assert "mode=signIn" in magic_link, f"Unexpected link format: {magic_link}"
 
