@@ -47,17 +47,17 @@ class TestEnsureWatch:
         """_ensure_watch writes correct status to Firestore."""
         from datetime import datetime, timezone
 
-        # Import and call _ensure_watch (the real function)
-        from service.main import _ensure_watch
-        import service.main as main_module
+        # Import and call ensure_watch (lives in gmail_client after refactor)
+        from service.gmail_client import ensure_watch
+        import service.gmail_client as gmail_module
 
         # Force a fresh check by clearing the in-memory cache
-        original_cache = main_module._watch_expires_at
+        original_cache = gmail_module._watch_expires_at
         try:
-            main_module._watch_expires_at = None
-            _ensure_watch(bot_gmail)
+            gmail_module._watch_expires_at = None
+            ensure_watch(bot_gmail)
         finally:
-            main_module._watch_expires_at = original_cache
+            gmail_module._watch_expires_at = original_cache
 
         # Verify Firestore doc was written
         doc = db.collection("system").document("watch_status").get()
