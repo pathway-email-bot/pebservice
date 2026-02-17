@@ -11,28 +11,18 @@ Run:  python -m pytest tests/local/test_grading_logic.py -v --timeout=30
 Cost: ~$0.01 per run (1 OpenAI API call)
 """
 
-import os
 from pathlib import Path
 
 import pytest
 
-PROJECT_ID = "pathway-email-bot-6543"
 SERVICE_DIR = Path(__file__).resolve().parent.parent.parent / "service"
-
-
-def _get_secret(name: str) -> str:
-    from google.cloud import secretmanager
-
-    client = secretmanager.SecretManagerServiceClient()
-    full_name = f"projects/{PROJECT_ID}/secrets/{name}/versions/latest"
-    response = client.access_secret_version(request={"name": full_name})
-    return response.payload.data.decode("UTF-8").strip()
 
 
 @pytest.fixture(scope="module")
 def openai_api_key():
     """Get the OpenAI API key from Secret Manager."""
-    return _get_secret("openai-api-key")
+    from tests.helpers.gmail_helpers import get_secret
+    return get_secret("openai-api-key")
 
 
 class TestGradingLogic:

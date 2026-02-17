@@ -9,7 +9,6 @@ building blocks (secrets, Gmail API access) work from the caller's machine.
 Run:  python -m pytest tests/local/test_credentials.py -v
 """
 
-import json
 import time
 
 import pytest
@@ -27,50 +26,14 @@ SECRETS = {
 }
 
 
-# ── Helpers ──────────────────────────────────────────────────────────
-
-
-def _get_secret(name: str) -> str:
-    from google.cloud import secretmanager
-
-    client = secretmanager.SecretManagerServiceClient()
-    full_name = f"projects/{PROJECT_ID}/secrets/{name}/versions/latest"
-    response = client.access_secret_version(request={"name": full_name})
-    return response.payload.data.decode("UTF-8").strip()
-
-
-def _build_bot_gmail_service():
-    """Build Gmail service using bot OAuth credentials from Secret Manager."""
-    from google.oauth2.credentials import Credentials
-    from googleapiclient.discovery import build
-
-    client_id = _get_secret("gmail-client-id")
-    client_secret = _get_secret("gmail-client-secret")
-
-    refresh_token_raw = _get_secret("gmail-refresh-token-bot")
-    try:
-        token_data = json.loads(refresh_token_raw)
-        refresh_token = token_data["refresh_token"]
-    except (json.JSONDecodeError, KeyError):
-        refresh_token = refresh_token_raw
-
-    creds = Credentials(
-        None,
-        refresh_token=refresh_token,
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=client_id,
-        client_secret=client_secret,
-    )
-    return build("gmail", "v1", credentials=creds)
-
-
 # ── Fixtures ─────────────────────────────────────────────────────────
 
 
 @pytest.fixture(scope="module")
 def bot_gmail():
     """Authenticated Gmail API service for the bot account."""
-    return _build_bot_gmail_service()
+    from tests.helpers.gmail_helpers import get_bot_gmail_service
+    return get_bot_gmail_service()
 
 
 # ── Tests: Secret Manager ───────────────────────────────────────────
@@ -80,13 +43,15 @@ class TestSecretManagerAccess:
     """Verify ADC credentials can read all required secrets."""
 
     def test_openai_api_key(self):
-        key = _get_secret("openai-api-key")
+        from tests.helpers.gmail_helpers import get_secret
+        key = get_secret("openai-api-key")
         assert key, "API key should not be empty"
         assert key.startswith("sk-"), f"Expected OpenAI key format, got: {key[:5]}..."
 
     @pytest.mark.parametrize("secret_name", list(SECRETS.keys()))
     def test_secret_exists_and_nonempty(self, secret_name):
-        value = _get_secret(secret_name)
+        from tests.helpers.gmail_helpers import get_secret
+        value = get_secret(secret_name)
         assert value, f"Secret '{secret_name}' ({SECRETS[secret_name]}) is empty"
         assert len(value) > 5, f"Secret '{secret_name}' looks too short: {len(value)} chars"
 

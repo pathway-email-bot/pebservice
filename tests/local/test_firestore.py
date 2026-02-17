@@ -10,28 +10,18 @@ CI (via the GCP_SA_KEY service account).
 Run: python -m pytest tests/local/test_firestore.py -v
 """
 
-import os
 import uuid
 
 import pytest
 
-PROJECT_ID = "pathway-email-bot-6543"
 TEST_USER = "integration-test@test.local"  # fake user, won't collide with real data
 
 
 @pytest.fixture(scope="module")
 def db():
     """Get a Firestore client pointing at the 'pathway' database."""
-    import firebase_admin
-    from google.cloud import firestore
-
-    os.environ.setdefault("GOOGLE_CLOUD_PROJECT", PROJECT_ID)
-    try:
-        firebase_admin.get_app()
-    except ValueError:
-        firebase_admin.initialize_app(options={"projectId": PROJECT_ID})
-
-    return firestore.Client(database="pathway")
+    from tests.helpers.firestore_helpers import get_firestore_db
+    return get_firestore_db()
 
 
 @pytest.fixture

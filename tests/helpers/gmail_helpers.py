@@ -17,7 +17,7 @@ from email.mime.text import MIMEText
 PROJECT_ID = "pathway-email-bot-6543"
 
 
-def _get_secret(name: str) -> str:
+def get_secret(name: str) -> str:
     """Read a secret from Secret Manager."""
     from google.cloud import secretmanager
 
@@ -38,12 +38,38 @@ def get_test_gmail_service():
 
     creds = Credentials(
         None,
-        refresh_token=_get_secret("gmail-refresh-token-test"),
+        refresh_token=get_secret("gmail-refresh-token-test"),
         token_uri="https://oauth2.googleapis.com/token",
-        client_id=_get_secret("gmail-client-id"),
-        client_secret=_get_secret("gmail-client-secret"),
+        client_id=get_secret("gmail-client-id"),
+        client_secret=get_secret("gmail-client-secret"),
     )
 
+    return build("gmail", "v1", credentials=creds)
+
+
+def get_bot_gmail_service():
+    """
+    Get Gmail API service for the BOT account (pathwayemailbot@gmail.com).
+
+    Always reads credentials from Secret Manager (single source of truth).
+    """
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+
+    refresh_token_raw = get_secret("gmail-refresh-token-bot")
+    try:
+        token_data = json.loads(refresh_token_raw)
+        refresh_token = token_data["refresh_token"]
+    except (json.JSONDecodeError, KeyError):
+        refresh_token = refresh_token_raw
+
+    creds = Credentials(
+        None,
+        refresh_token=refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=get_secret("gmail-client-id"),
+        client_secret=get_secret("gmail-client-secret"),
+    )
     return build("gmail", "v1", credentials=creds)
 
 
