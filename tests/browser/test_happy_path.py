@@ -49,7 +49,7 @@ SCENARIO_ID = "missed_remote_standup"
 
 POLL_TIMEOUT = 120  # seconds to wait for grading
 POLL_INTERVAL = 5   # seconds between polls
-MAGIC_LINK_WAIT = 30  # seconds to wait for Firebase + Gmail API indexing delay
+MAGIC_LINK_WAIT = 15  # seconds — email arrives in ~5s, this gives 3x margin
 
 # Output directory (tests/browser/output/)
 OUTPUT_DIR = Path(__file__).resolve().parent / "output"
