@@ -49,7 +49,7 @@ SCENARIO_ID = "missed_remote_standup"
 
 POLL_TIMEOUT = 120  # seconds to wait for grading
 POLL_INTERVAL = 5   # seconds between polls
-MAGIC_LINK_WAIT = 60  # seconds to wait for Firebase to deliver the email
+MAGIC_LINK_WAIT = 10  # seconds to wait for Firebase to deliver the email
 
 # Output directory (tests/browser/output/)
 OUTPUT_DIR = Path(__file__).resolve().parent / "output"
@@ -158,17 +158,31 @@ def _find_magic_link(gmail_service, timeout: int = MAGIC_LINK_WAIT, sent_after: 
     """
     from html import unescape
     from bs4 import BeautifulSoup
+    from googleapiclient.errors import HttpError
 
     start = time.time()
+    first_poll = True
     while time.time() - start < timeout:
-        results = gmail_service.users().messages().list(
-            userId="me",
-            q='from:noreply subject:"Sign in"',
-            maxResults=5,
-            includeSpamTrash=True,
-        ).execute()
+        try:
+            results = gmail_service.users().messages().list(
+                userId="me",
+                q='from:noreply subject:"Sign in"',
+                maxResults=5,
+                includeSpamTrash=True,
+            ).execute()
+        except HttpError as e:
+            if e.resp.status in (401, 403):
+                raise RuntimeError(
+                    f"Gmail API auth failed (HTTP {e.resp.status}). "
+                    f"Check that test account OAuth tokens in Secret Manager are valid."
+                ) from e
+            raise
 
         messages = results.get("messages", [])
+        if first_poll:
+            _log(f"  Gmail poll: {len(messages)} candidate messages (sent_after={sent_after:.0f})")
+            first_poll = False
+
         for msg_meta in messages:
             msg = gmail_service.users().messages().get(
                 userId="me", id=msg_meta["id"], format="full",
