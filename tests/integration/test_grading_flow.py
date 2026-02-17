@@ -11,7 +11,6 @@ Run:  python -m pytest tests/integration/test_grading_flow.py -v --timeout=180
 Cost: ~$0.01 per run (1 OpenAI API call via the deployed function)
 """
 
-import os
 import uuid
 
 import pytest
@@ -46,16 +45,16 @@ def gmail():
 @pytest.fixture(scope="module")
 def db():
     """Firestore client for the 'pathway' database."""
-    import firebase_admin
-    from google.cloud import firestore
+    from tests.helpers.firestore_helpers import get_firestore_db
+    return get_firestore_db()
 
-    os.environ.setdefault("GOOGLE_CLOUD_PROJECT", PROJECT_ID)
-    try:
-        firebase_admin.get_app()
-    except ValueError:
-        firebase_admin.initialize_app(options={"projectId": PROJECT_ID})
 
-    return firestore.Client(database="pathway")
+@pytest.fixture(autouse=True)
+def _hold_test_account_lock(db):
+    """Hold the test-account mutex for the duration of each test."""
+    from tests.helpers.firestore_helpers import test_user_lock
+    with test_user_lock(db):
+        yield  # lock held during entire test
 
 
 # ── Test ─────────────────────────────────────────────────────────────

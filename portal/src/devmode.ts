@@ -4,18 +4,16 @@
  * Activated via the `?devmode` query parameter:
  *   ?devmode              → active with no specific flags (default mode)
  *   ?devmode=preview      → active with "preview" flag
- *   ?devmode=forcenameentry,preview → active with multiple flags
  *
  * Usage:
  *   import { devmode } from '../devmode';
  *
  *   if (devmode.active) { ... }           // any devmode
- *   if (devmode.has('forcenameentry')) ... // specific flag
+ *   if (devmode.has('preview')) ...        // specific flag
  *   console.log(devmode.flags);           // Set of all flags
  *
  * Flags:
- *   preview          — auto-activate the first scenario for UX debugging
- *   forcenameentry   — always show name modal (even if name already set)
+ *   preview   — auto-activate the first scenario for UX debugging
  */
 
 const params = new URLSearchParams(window.location.search);

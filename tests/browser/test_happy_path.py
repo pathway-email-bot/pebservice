@@ -127,6 +127,26 @@ def gmail():
     return get_test_gmail_service()
 
 
+@pytest.fixture(autouse=True)
+def _clean_test_account():
+    """
+    Acquire a mutex, delete the test user's Firestore data, and release after test.
+
+    This ensures:
+      - Parallel test pipelines don't corrupt each other's state
+      - The test exercises the real new-user flow (name modal appears naturally)
+      - Attempt history doesn't grow unbounded from CI runs
+    """
+    from tests.helpers.firestore_helpers import (
+        get_firestore_db, test_user_lock, delete_user_document,
+    )
+    db = get_firestore_db()
+    with test_user_lock(db, log=_log):
+        deleted = delete_user_document(db, TEST_EMAIL)
+        _log(f"Cleaned test account (deleted {deleted} attempts + user doc)")
+        yield  # lock held during entire test
+
+
 def _find_magic_link(gmail_service, timeout: int = MAGIC_LINK_WAIT, sent_after: float = 0) -> str:
     """
     Poll Gmail inbox for the Firebase magic link email.
@@ -235,19 +255,7 @@ class TestHappyPath:
         magic_link = _find_magic_link(gmail, sent_after=send_time)
         assert "mode=signIn" in magic_link, f"Unexpected link format: {magic_link}"
 
-        # Inject devmode=forcenameentry into the continueUrl param of the magic link.
-        # Firebase only redirects to the continueUrl — top-level params are NOT forwarded.
-        from urllib.parse import urlparse, parse_qs, urlencode, urlunparse, quote
-        parsed = urlparse(magic_link)
-        params = parse_qs(parsed.query)
-        if 'continueUrl' in params:
-            cont = params['continueUrl'][0]
-            sep = '&' if '?' in cont else '?'
-            params['continueUrl'] = [f"{cont}{sep}devmode=forcenameentry"]
-        magic_link = urlunparse(parsed._replace(
-            query=urlencode(params, doseq=True)
-        ))
-        _log(f"Magic link (with devmode): {magic_link}")
+        _log(f"Magic link: {magic_link}")
 
         # ── Step 3: Navigate to magic link ───────────────────────
         # Firebase action URL redirects to the continueUrl with auth params.
@@ -266,16 +274,16 @@ class TestHappyPath:
         expect(page.locator(".scenarios-container")).to_be_visible(timeout=15000)
         _snap(page, "04_scenarios_page")
 
-        # ── Step 4: Enter name (if modal appears) ──────────────────
-        # The name modal shows if no name is set, or if devmode=forcenameentry is active.
-        # It depends on Firestore data loading (~1s after scenarios container renders),
-        # so wait a moment before checking visibility.
+        # ── Step 4: Enter name (name modal shows for new users) ────────
+        # We deleted the user document in _clean_test_account, so this is
+        # a real new-user flow — the name modal appears naturally.
+        # Wait for the Firestore listener to fire (no user doc → null → modal).
         import time as _time
         _time.sleep(2)  # allow Firestore listener to fire
         name_modal = page.locator(".name-modal-overlay")
         if name_modal.is_visible():
             _snap(page, "05a_name_modal")
-            page.locator("#first-name-input").fill("TestBot")
+            page.locator("#first-name-input").fill("SarahTestBot")
             page.locator("#name-submit-btn").click()
             expect(name_modal).to_be_hidden(timeout=5000)
             _snap(page, "05b_name_submitted")

@@ -109,8 +109,8 @@ async function renderAuthenticatedView(container: HTMLElement, user: User): Prom
         attachHeaderHandlers();
       }
     }
-    // Show name modal if no name is set, or forced via ?devmode=forcenameentry (for browser E2E tests)
-    if (!studentFirstName || devmode.has('forcenameentry')) {
+    // Show name modal if no name is set
+    if (!studentFirstName) {
       showNameModal(user);
     }
   });
