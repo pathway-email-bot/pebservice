@@ -4,6 +4,7 @@
 
 - [ ] **Investigate how we can not be marked as spam**
 - [ ] **Share with Tom Kerby**
+- [ ] **Consider cold-start warm-up between functions** — when `send_magic_link` runs (student logging in), it could ping `start_scenario` to warm it up since the student will use it next. Options: cross-function ping, Cloud Scheduler during class hours, or `--min-instances=1`. Tradeoff is complexity vs ~3s savings for the first student.
 
 
 ## Housekeeping
