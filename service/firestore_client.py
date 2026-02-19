@@ -134,3 +134,55 @@ def update_attempt_graded(
             'activeAttemptId': None,
         })
 
+
+# ============================================================================
+# Gmail History Cursor
+# ============================================================================
+
+_SYNC_DOC_PATH = ('system', 'gmail_sync')
+
+
+def get_last_history_id() -> str | None:
+    """Read the last-processed Gmail historyId from Firestore."""
+    db = get_firestore_client()
+    doc_ref = db.collection(_SYNC_DOC_PATH[0]).document(_SYNC_DOC_PATH[1])
+    snap = doc_ref.get()
+    if snap.exists:
+        return snap.to_dict().get('lastHistoryId')
+    return None
+
+
+def update_last_history_id(history_id: str):
+    """Write the last-processed Gmail historyId to Firestore."""
+    db = get_firestore_client()
+    doc_ref = db.collection(_SYNC_DOC_PATH[0]).document(_SYNC_DOC_PATH[1])
+    doc_ref.set({'lastHistoryId': history_id}, merge=True)
+
+
+# ============================================================================
+# Attempt Claim (idempotent grading)
+# ============================================================================
+
+
+def claim_attempt_for_grading(email: str, attempt_id: str) -> bool:
+    """Atomically claim an attempt for grading (pending → grading).
+
+    Returns True if this caller won the claim, False if the attempt
+    was already claimed or graded by another instance.
+    """
+    db = get_firestore_client()
+    attempt_ref = (
+        db.collection('users').document(email)
+        .collection('attempts').document(attempt_id)
+    )
+
+    @firestore.transactional
+    def _txn(transaction):
+        snap = attempt_ref.get(transaction=transaction)
+        if snap.exists and snap.to_dict().get('status') == 'pending':
+            transaction.update(attempt_ref, {'status': 'grading'})
+            return True
+        return False
+
+    return _txn(db.transaction())
+

@@ -14,7 +14,7 @@ export interface RubricScore {
 export interface Attempt {
     id: string;
     scenarioId: string;
-    status: 'pending' | 'graded' | 'abandoned';
+    status: 'pending' | 'grading' | 'graded' | 'abandoned';
     startedAt: Date;
     score?: number;
     maxScore?: number;

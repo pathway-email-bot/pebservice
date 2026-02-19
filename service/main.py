@@ -145,47 +145,47 @@ def process_email(cloud_event):
                 return "OK"
 
             try:
-                logger.info(f"Fetching history starting from historyId={history_id}")
-                history = service.users().history().list(userId='me', startHistoryId=history_id).execute()
+                from .firestore_client import get_last_history_id, update_last_history_id
+
+                # Use stored cursor (not notification's historyId) to catch ALL new messages
+                stored_id = get_last_history_id()
+                effective_id = stored_id or history_id
+                logger.info(f"Fetching history: stored={stored_id}, notification={history_id}, using={effective_id}")
+
+                history = service.users().history().list(
+                    userId='me', startHistoryId=effective_id, labelId='INBOX'
+                ).execute()
                 changes = history.get('history', [])
 
+                # Advance cursor before processing (safe: attempt claim prevents double work)
+                new_history_id = history.get('historyId', history_id)
+                update_last_history_id(new_history_id)
+                logger.info(f"Advanced history cursor to {new_history_id}")
+
                 if not changes:
-                    logger.info("No history changes found. Attempting fallback to latest message.")
-                    try:
-                        response = service.users().messages().list(userId='me', maxResults=1).execute()
-                        messages = response.get('messages', [])
-                        if messages:
-                            latest_msg_id = messages[0]['id']
-                            msg = service.users().messages().get(userId='me', id=latest_msg_id, format='full').execute()
-                            fb_sender = get_header(msg.get('payload', {}).get('headers', []), 'From', 'Unknown')
-                            logger.info(f"Fallback processing message {latest_msg_id} from: {fb_sender}")
-                            process_single_message(service, msg)
-                            return "OK"
-                        else:
-                            logger.info("Fallback found no messages either")
-                            return "OK"
-                    except Exception as fb_e:
-                        logger.error(f"Fallback failed: {fb_e}", exc_info=True)
-                        return "OK"
+                    logger.info("No new INBOX messages since last sync")
+                    return "OK"
 
-                logger.info(f"Found {len(changes)} history changes")
-
-                found_message = False
+                # Process each new message
+                msg_count = 0
                 for change in changes:
-                    messages_added = change.get('messagesAdded', [])
-                    for record in messages_added:
+                    for record in change.get('messagesAdded', []):
                         message_id = record.get('message', {}).get('id')
                         if message_id:
-                             logger.info(f"Processing added message ID: {message_id}")
-                             msg = service.users().messages().get(userId='me', id=message_id, format='full').execute()
-                             process_single_message(service, msg)
-                             found_message = True
+                            logger.info(f"Processing added message ID: {message_id}")
+                            msg = service.users().messages().get(
+                                userId='me', id=message_id, format='full'
+                            ).execute()
+                            process_single_message(service, msg)
+                            msg_count += 1
 
-                if not found_message:
-                    logger.info("No 'messagesAdded' events found in history")
+                if msg_count == 0:
+                    logger.info("History changes found but no messagesAdded events")
+                else:
+                    logger.info(f"Processed {msg_count} message(s)")
 
             except Exception as e:
-                logger.error(f"Error fetching history: {e}", exc_info=True)
+                logger.error(f"Error processing email history: {e}", exc_info=True)
 
         except json.JSONDecodeError:
             logger.error("Failed to decode JSON from Pub/Sub message")
@@ -199,7 +199,7 @@ def process_email(cloud_event):
 def process_single_message(service, msg):
     """Parse email content and grade it."""
     try:
-        from .firestore_client import get_active_scenario, update_attempt_graded, get_firestore_client
+        from .firestore_client import get_active_scenario, update_attempt_graded, claim_attempt_for_grading
 
         headers = msg.get('payload', {}).get('headers', [])
         subject = get_header(headers, 'Subject', 'No Subject')
@@ -237,12 +237,9 @@ def process_single_message(service, msg):
         scenario_id, attempt_id = active_scenario
         logger.info(f"Found active scenario: {scenario_id} (attempt: {attempt_id})")
 
-        # --- Idempotency guard: skip if already graded ---
-        db = get_firestore_client()
-        attempt_ref = db.collection('users').document(sender_email).collection('attempts').document(attempt_id)
-        attempt_doc = attempt_ref.get()
-        if attempt_doc.exists and attempt_doc.to_dict().get('status') == 'graded':
-            logger.info(f"Attempt {attempt_id} already graded — skipping duplicate")
+        # --- Idempotency: atomically claim attempt (pending → grading) ---
+        if not claim_attempt_for_grading(sender_email, attempt_id):
+            logger.info(f"Attempt {attempt_id} already claimed/graded — skipping")
             return
 
         # Load scenario and rubric
