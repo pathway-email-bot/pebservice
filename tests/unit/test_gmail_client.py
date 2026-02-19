@@ -15,6 +15,7 @@ import pytest
 
 from service.gmail_client import (
     build_mime_message,
+    send_reply,
     extract_email_body,
     check_and_claim_watch,
 )
@@ -52,6 +53,122 @@ class TestBuildMimeMessage:
         decoded = base64.urlsafe_b64decode(result).decode("utf-8")
         assert "To: user@example.com" in decoded
         assert "Bot Name <bot@example.com>" in decoded
+
+    def test_multipart_alternative_with_html(self):
+        """When html is provided, creates multipart/alternative with both parts."""
+        from email import message_from_bytes
+
+        result = build_mime_message(
+            from_addr="bot@example.com",
+            from_name="Test Bot",
+            to_addr="student@example.com",
+            subject="Magic Link",
+            body="Plain text fallback",
+            html="<h1>HTML version</h1>",
+        )
+        raw_bytes = base64.urlsafe_b64decode(result)
+        parsed = message_from_bytes(raw_bytes)
+
+        assert parsed.get_content_type() == "multipart/alternative"
+
+        parts = list(parsed.walk())
+        content_types = [p.get_content_type() for p in parts]
+        assert "text/plain" in content_types
+        assert "text/html" in content_types
+
+        # Verify payloads
+        plain_part = [p for p in parts if p.get_content_type() == "text/plain"][0]
+        html_part = [p for p in parts if p.get_content_type() == "text/html"][0]
+        assert "Plain text fallback" in plain_part.get_payload(decode=True).decode()
+        assert "<h1>HTML version</h1>" in html_part.get_payload(decode=True).decode()
+
+
+# ── send_reply (MIME correctness) ────────────────────────────────────
+
+
+def _make_original_msg(message_id="<abc123@mail.gmail.com>"):
+    """Build a minimal original-message dict for send_reply tests."""
+    return {
+        "threadId": "thread_xyz",
+        "payload": {
+            "headers": [
+                {"name": "Subject", "value": "Test Subject"},
+                {"name": "From", "value": "student@example.com"},
+                {"name": "Message-ID", "value": message_id},
+            ]
+        },
+    }
+
+
+class TestSendReply:
+    """Tests that send_reply() produces standards-compliant MIME messages."""
+
+    @patch("service.main.get_header")
+    def test_reply_has_content_type_header(self, mock_get_header):
+        """Reply must contain Content-Type: text/plain."""
+        def header_side_effect(headers, name, default=""):
+            mapping = {
+                "Subject": "Test Subject",
+                "From": "student@example.com",
+                "Message-ID": "<abc123@mail.gmail.com>",
+            }
+            return mapping.get(name, default)
+
+        mock_get_header.side_effect = header_side_effect
+
+        service = MagicMock()
+        service.users().messages().send().execute.return_value = {"id": "sent_123"}
+
+        send_reply(service, _make_original_msg(), "Hello reply")
+
+        # Verify send was called
+        assert service.users().messages().send.called
+
+    @patch("service.main.get_header")
+    def test_reply_produces_valid_mime(self, mock_get_header):
+        """Reply should be a valid MIME message with all required headers."""
+        from email import message_from_bytes
+
+        captured_body = {}
+
+        def header_side_effect(headers, name, default=""):
+            mapping = {
+                "Subject": "Test Subject",
+                "From": "student@example.com",
+                "Message-ID": "<abc123@mail.gmail.com>",
+            }
+            return mapping.get(name, default)
+
+        mock_get_header.side_effect = header_side_effect
+
+        # Capture the body passed to send()
+        mock_send = MagicMock()
+        mock_send.execute.return_value = {"id": "sent_123"}
+
+        service = MagicMock()
+        service.users().messages().send.return_value = mock_send
+
+        def capture_send(**kwargs):
+            captured_body.update(kwargs.get("body", {}))
+            return mock_send
+
+        service.users().messages().send.side_effect = capture_send
+
+        send_reply(service, _make_original_msg(), "Hello world")
+
+        assert "raw" in captured_body
+        raw_bytes = base64.urlsafe_b64decode(captured_body["raw"])
+        parsed = message_from_bytes(raw_bytes)
+
+        assert parsed["Content-Type"] is not None
+        assert "text/plain" in parsed["Content-Type"]
+        assert parsed["MIME-Version"] == "1.0"
+        assert "pathwayemailbot@gmail.com" in parsed["From"]
+        assert parsed["To"] == "student@example.com"
+        assert parsed["Subject"].startswith("Re:")
+        assert parsed["In-Reply-To"] == "<abc123@mail.gmail.com>"
+        assert parsed["References"] == "<abc123@mail.gmail.com>"
+        assert parsed.get_payload() == "Hello world"
 
 
 # ── Email Body Extraction ────────────────────────────────────────────

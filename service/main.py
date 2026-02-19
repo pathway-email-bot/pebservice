@@ -1,7 +1,7 @@
 """
 Pathway Email Bot (PEB) - Cloud Functions Main Entry Point
 
-This file contains TWO separate Google Cloud Functions that share the same codebase:
+This file contains THREE separate Google Cloud Functions that share the same codebase:
 
 1. process_email (Cloud Event / Pub/Sub trigger)
    - Triggered by Gmail push notifications when student sends email
@@ -13,6 +13,11 @@ This file contains TWO separate Google Cloud Functions that share the same codeb
    - Validates Firebase auth, creates Firestore attempt, ensures Gmail watch
    - For REPLY scenarios: also sends starter email via Gmail API
    - Deployed as: gcloud functions deploy start_scenario --trigger-http
+
+3. send_magic_link (HTTP trigger, unauthenticated)
+   - Called by portal to send a sign-in magic link via bot's Gmail
+   - Generates link via Admin SDK, sends via Gmail API (avoids Firebase's shared domain)
+   - Deployed as: gcloud functions deploy send_magic_link --trigger-http --allow-unauthenticated
 
 Both functions deploy from this same source directory (./service) and share:
   - email_agent/ (scenario loading, grading logic, email agent)
@@ -440,3 +445,232 @@ def start_scenario(request: Request):
     except Exception as e:
         logger.error(f"Error in start_scenario: {e}", exc_info=True)
         return {'error': str(e)}, 500, cors_headers
+
+
+# ============================================================================
+# HTTP Cloud Function: send_magic_link (unauthenticated)
+# ============================================================================
+
+# Continue URL for magic link — where users land after clicking the link
+MAGIC_LINK_CONTINUE_URL = CORS_ORIGIN + "/pebservice/"
+
+# ---------- In-memory rate limiting ----------
+# Cloud Functions instances persist between requests, so module-level state
+# acts as a per-instance cache. In a scale-out event each instance gets its
+# own cache, which means rate limits are "best-effort" — but sufficient to
+# stop simple abuse scripts (a determined attacker hitting multiple instances
+# isn't stopped, but Gmail's 500/day cap is the hard backstop).
+import threading
+from collections import deque
+
+_rate_lock = threading.Lock()
+_email_last_sent: dict[str, float] = {}              # email → last send timestamp
+_ip_request_log: dict[str, deque[float]] = {}        # ip → deque(maxlen=5) of timestamps
+
+# Rate limit constants
+_EMAIL_COOLDOWN_SECS = 60   # 1 magic link per email per 60 seconds
+_IP_MAX_RPS = 5             # max 5 requests/second per IP
+_IP_WINDOW_SECS = 1.0       # sliding window for IP rate limiting
+
+
+def _get_client_ip(request: Request) -> str:
+    """Extract client IP from X-Forwarded-For (set by Cloud Run/Functions)."""
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        # First IP in comma-separated list is the original client
+        return forwarded.split(",")[0].strip()
+    return request.remote_addr or "unknown"
+
+
+def _check_rate_limit(email: str, client_ip: str) -> str | None:
+    """Return an error message if rate-limited, None if OK."""
+    import time
+    now = time.monotonic()
+
+    with _rate_lock:
+        # --- Per-IP: ring buffer of last 5 request timestamps (O(1)) ---
+        if client_ip not in _ip_request_log:
+            _ip_request_log[client_ip] = deque(maxlen=_IP_MAX_RPS)
+
+        ring = _ip_request_log[client_ip]
+        ring.append(now)  # auto-evicts oldest if full; always counted
+
+        if len(ring) >= _IP_MAX_RPS and (now - ring[0]) < _IP_WINDOW_SECS:
+            return "Too many requests. Please wait a moment and try again."
+
+        # --- Per-email cooldown ---
+        last = _email_last_sent.get(email)
+        if last and (now - last) < _EMAIL_COOLDOWN_SECS:
+            remaining = int(_EMAIL_COOLDOWN_SECS - (now - last))
+            return f"Please wait {remaining}s before requesting another link for this email."
+
+        # Both checks passed — record email send time
+        _email_last_sent[email] = now
+
+    return None  # OK
+
+
+@functions_framework.http
+@log_function
+def send_magic_link(request: Request):
+    """HTTP Cloud Function to send a sign-in magic link via Gmail API.
+
+    Replaces Firebase's default magic link email (sent from the shared
+    noreply@...firebaseapp.com domain) with one sent from the bot's own
+    Gmail account, which has proper DKIM signing and better deliverability.
+
+    This endpoint is UNAUTHENTICATED because it serves the login flow
+    (the user isn't signed in yet). Protections:
+      - CORS restricted to CORS_ORIGIN
+      - Email format validation
+      - Per-email rate limit (1 per 60s)
+      - Per-IP rate limit (5 RPS)
+      - Firebase magic links are one-time-use tokens
+      - Gmail API has built-in daily sending limits
+
+    Request body:
+    {
+        "email": "student@example.com"
+    }
+
+    Response:
+    {
+        "success": true
+    }
+    """
+    import re
+    from firebase_admin import auth as firebase_auth
+
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        headers = {
+            'Access-Control-Allow-Origin': CORS_ORIGIN,
+            'Access-Control-Allow-Methods': 'POST',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '3600'
+        }
+        return ('', 204, headers)
+
+    cors_headers = {
+        'Access-Control-Allow-Origin': CORS_ORIGIN,
+        'Content-Type': 'application/json',
+    }
+
+    try:
+        # Parse and validate email
+        request_json = request.get_json() or {}
+        email = request_json.get('email', '').strip().lower()
+
+        if not email:
+            return {'error': 'Missing email in request'}, 400, cors_headers
+
+        # Basic email format validation
+        if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+            return {'error': 'Invalid email format'}, 400, cors_headers
+
+        # Extract IP and log for abuse debugging
+        # (GCP _Default log bucket auto-deletes after 30 days)
+        client_ip = _get_client_ip(request)
+        logger.info(f"Magic link request: email={email} ip={client_ip}")
+
+        # Rate limiting
+        rate_error = _check_rate_limit(email, client_ip)
+        if rate_error:
+            logger.warning(f"Rate limited: email={email} ip={client_ip} reason={rate_error}")
+            return {'error': rate_error}, 429, cors_headers
+
+        # Generate the magic link server-side (does NOT send an email)
+        action_code_settings = firebase_auth.ActionCodeSettings(
+            url=MAGIC_LINK_CONTINUE_URL,
+            handle_code_in_app=True,
+        )
+
+        link = firebase_auth.generate_sign_in_with_email_link(
+            email, action_code_settings
+        )
+
+        logger.info(f"Magic link generated for {email}")
+
+        # Send via Gmail API
+        gmail_service = get_gmail_service()
+        if not gmail_service:
+            logger.error("Failed to initialize Gmail service for magic link")
+            return {'error': 'Email service unavailable'}, 500, cors_headers
+
+        email_body = (
+            f"Hello,\n\n"
+            f"Click the link below to sign in to Pathway Email Bot:\n\n"
+            f"{link}\n\n"
+            f"This link expires in 1 hour and can only be used once.\n\n"
+            f"If you did not request this, you can safely ignore this email.\n\n"
+            f"— Pathway Email Bot"
+        )
+
+        email_html = f"""\
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0; padding:0; background:#f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5; padding:40px 20px;">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#2563eb,#1d4ed8); padding:32px 40px; text-align:center;">
+          <h1 style="margin:0; color:#ffffff; font-size:22px; font-weight:600; letter-spacing:-0.3px;">
+            &#x1F4E7; Pathway Email Bot
+          </h1>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:36px 40px;">
+          <p style="margin:0 0 20px; color:#374151; font-size:16px; line-height:1.6;">
+            Hello! Click the button below to sign in:
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td align="center" style="padding:8px 0 28px;">
+              <a href="{link}" target="_blank"
+                 style="display:inline-block; background:#2563eb; color:#ffffff; padding:14px 40px;
+                        border-radius:8px; font-size:16px; font-weight:600; text-decoration:none;
+                        letter-spacing:0.2px; box-shadow:0 2px 4px rgba(37,99,235,0.3);">
+                Sign in to Pathway Email Bot
+              </a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 6px; color:#6b7280; font-size:13px; line-height:1.5;">
+            Or copy and paste this link into your browser:
+          </p>
+          <p style="margin:0 0 24px; word-break:break-all; color:#2563eb; font-size:13px; line-height:1.5;">
+            {link}
+          </p>
+          <hr style="border:none; border-top:1px solid #e5e7eb; margin:0 0 20px;">
+          <p style="margin:0; color:#9ca3af; font-size:12px; line-height:1.5;">
+            This link expires in 1 hour and can only be used once.<br>
+            If you didn&rsquo;t request this email, you can safely ignore it.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+        raw_message = build_mime_message(
+            from_addr=BOT_EMAIL,
+            from_name="Pathway Email Bot",
+            to_addr=email,
+            subject="Sign in to Pathway Email Bot",
+            body=email_body,
+            html=email_html,
+        )
+
+        gmail_service.users().messages().send(
+            userId='me', body={'raw': raw_message}
+        ).execute()
+
+        logger.info(f"Magic link email sent to {email} via Gmail API")
+
+        return {'success': True}, 200, cors_headers
+
+    except Exception as e:
+        logger.error(f"Error in send_magic_link: {e}", exc_info=True)
+        return {'error': 'Failed to send sign-in link. Please try again.'}, 500, cors_headers
+

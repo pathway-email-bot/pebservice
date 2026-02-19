@@ -1,11 +1,4 @@
-/**
- * Firebase Authentication Service
- * 
- * Handles magic link (email link) authentication for the student portal.
- */
-
 import {
-    sendSignInLinkToEmail,
     isSignInWithEmailLink,
     signInWithEmailLink,
     onAuthStateChanged,
@@ -29,31 +22,49 @@ function debugError(message: string, error: any) {
     }
 }
 
-// Action code settings for the magic link
-const getActionCodeSettings = () => {
-    // Redirect back to the root URL after clicking the link.
-    // main.ts routes by auth state, so no subpath is needed —
-    // once sign-in completes, the auth listener shows scenarios automatically.
-    const settings = {
-        url: window.location.origin + import.meta.env.BASE_URL,
-        handleCodeInApp: true,
-    };
-
-    debugLog('Action code settings:', settings);
-    return settings;
-};
+const CLOUD_FUNCTION_BASE_URL = 'https://us-central1-pathway-email-bot-6543.cloudfunctions.net';
 
 /**
- * Send a magic link to the user's email
+ * Send a magic link to the user's email via our Cloud Function.
+ * 
+ * The link is generated server-side by Firebase Admin SDK and sent
+ * via the bot's Gmail API account (better deliverability than Firebase's
+ * shared noreply@...firebaseapp.com domain).
  */
 export async function sendMagicLink(email: string): Promise<void> {
     debugLog('Attempting to send magic link', { email });
 
-    try {
-        const actionCodeSettings = getActionCodeSettings();
+    // DEV mock — Vite strips this from production builds
+    if (import.meta.env.DEV) {
+        console.info(`[DEV MOCK] sendMagicLink("${email}") — skipping API call`);
+        await new Promise(r => setTimeout(r, 1000)); // simulate latency
+        window.localStorage.setItem('emailForSignIn', email);
+        return;
+    }
 
-        debugLog('Calling sendSignInLinkToEmail...');
-        await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+    try {
+        debugLog('Calling send_magic_link Cloud Function...');
+
+        const response = await fetch(`${CLOUD_FUNCTION_BASE_URL}/send_magic_link`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const errorMessage = errorData.error || 'Failed to send login link';
+            debugError('Cloud Function error', { status: response.status, errorMessage });
+
+            if (response.status === 429) {
+                // Rate limited — server message includes specific wait time
+                throw new Error(errorMessage);
+            }
+            if (response.status === 400) {
+                throw new Error('Invalid email address. Please check and try again.');
+            }
+            throw new Error(errorMessage);
+        }
 
         debugLog('Magic link sent successfully!');
 
@@ -64,16 +75,11 @@ export async function sendMagicLink(email: string): Promise<void> {
     } catch (error: any) {
         debugError('Failed to send magic link', error);
 
-        // Re-throw with more context
-        if (error.code === 'auth/operation-not-allowed') {
-            throw new Error('Email link sign-in is not enabled. Please contact support.');
-        } else if (error.code === 'auth/invalid-email') {
-            throw new Error('Invalid email address. Please check and try again.');
-        } else if (error.code === 'auth/unauthorized-domain') {
-            throw new Error('This domain is not authorized. Please contact support.');
-        } else {
-            throw new Error(error.message || 'Failed to send login link. Please try again.');
+        // Re-throw — the error message is already user-friendly
+        if (error instanceof Error) {
+            throw error;
         }
+        throw new Error('Failed to send login link. Please try again.');
     }
 }
 

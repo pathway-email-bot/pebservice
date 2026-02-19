@@ -11,6 +11,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from email import message_from_bytes
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from google.cloud import firestore as firestore_lib
 from google.oauth2.credentials import Credentials
@@ -64,7 +65,11 @@ def get_gmail_service():
 
 @log_function
 def send_reply(service, original_msg, reply_text):
-    """Send a reply to an email via Gmail API."""
+    """Send a reply to an email via Gmail API.
+
+    Uses Python's MIMEText to produce a standards-compliant message with
+    Content-Type, MIME-Version, and From headers (critical for deliverability).
+    """
     try:
         thread_id = original_msg["threadId"]
         headers = original_msg["payload"]["headers"]
@@ -79,18 +84,18 @@ def send_reply(service, original_msg, reply_text):
 
         logger.info(f"Constructing reply message for thread: {thread_id}")
 
-        message_content = (
-            f"To: {sender_email}\r\n" f"Subject: Re: {subject}\r\n"
-        )
+        # Build a proper MIME message with all required headers
+        message = MIMEText(reply_text, "plain")
+        message["To"] = sender_email
+        message["From"] = "Pathway Email Bot <pathwayemailbot@gmail.com>"
+        message["Subject"] = f"Re: {subject}" if not subject.startswith("Re:") else subject
+
         if message_id:
-            message_content += (
-                f"In-Reply-To: {message_id}\r\n"
-                f"References: {message_id}\r\n"
-            )
-        message_content += f"\r\n{reply_text}"
+            message["In-Reply-To"] = message_id
+            message["References"] = message_id
 
         raw_message = base64.urlsafe_b64encode(
-            message_content.encode("utf-8")
+            message.as_bytes()
         ).decode("utf-8")
         body = {"raw": raw_message, "threadId": thread_id}
 
@@ -105,10 +110,22 @@ def send_reply(service, original_msg, reply_text):
 
 @log_function
 def build_mime_message(
-    from_addr: str, from_name: str, to_addr: str, subject: str, body: str
+    from_addr: str, from_name: str, to_addr: str, subject: str, body: str,
+    html: str | None = None,
 ) -> str:
-    """Build a MIME message and return as base64-encoded string for Gmail API."""
-    message = MIMEText(body, "plain")
+    """Build a MIME message and return as base64-encoded string for Gmail API.
+
+    Args:
+        html: Optional HTML version of the email. If provided, creates a
+              multipart/alternative message with both plain text and HTML parts.
+    """
+    if html:
+        message = MIMEMultipart("alternative")
+        message.attach(MIMEText(body, "plain"))
+        message.attach(MIMEText(html, "html"))
+    else:
+        message = MIMEText(body, "plain")
+
     message["To"] = to_addr
     message["From"] = f"{from_name} <{from_addr}>"
     message["Subject"] = subject
