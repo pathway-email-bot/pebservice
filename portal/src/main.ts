@@ -2,6 +2,7 @@ import './style.css';
 import { renderLoginPage } from './pages/login';
 import { renderScenariosPage } from './pages/scenarios';
 import { onAuthChange, completeMagicLinkSignIn } from './auth';
+import { injectFeedbackLink } from './feedback';
 
 /**
  * Routing is auth-state driven, not URL-path driven.
@@ -22,6 +23,9 @@ import { onAuthChange, completeMagicLinkSignIn } from './auth';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
 async function boot() {
+    // Inject the feedback link once (persists across page transitions)
+    injectFeedbackLink();
+
     // If returning from a magic link, complete the sign-in first
     try {
         const user = await completeMagicLinkSignIn();

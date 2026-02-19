@@ -1283,3 +1283,192 @@ form .btn-primary {
   outline: 3px solid var(--color-primary);
   outline-offset: 2px;
 }
+
+/* ===== Feedback Feature ===== */
+
+/* Discreet fixed-position link */
+.feedback-link {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-family);
+  font-size: 0.8rem;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s, color 0.2s;
+  z-index: 900;
+  padding: 4px 8px;
+}
+
+.feedback-link:hover {
+  opacity: 1;
+  color: var(--color-primary);
+}
+
+/* Modal overlay */
+.feedback-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.feedback-modal-overlay.closing {
+  animation: fadeOut 0.2s ease-out forwards;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Modal card */
+.feedback-modal {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  width: 90vw;
+  animation: slideUp 0.25s ease-out;
+  overflow: hidden;
+}
+
+.feedback-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.feedback-modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.feedback-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.feedback-close-btn:hover {
+  color: var(--color-text);
+}
+
+.feedback-modal-body {
+  padding: var(--spacing-lg);
+}
+
+/* Star rating */
+.star-rating {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.star-label {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-sm);
+}
+
+.stars {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  transition: transform 0.15s;
+}
+
+.star svg {
+  fill: #D1D5DB;
+  stroke: #D1D5DB;
+  stroke-width: 0.5;
+  transition: fill 0.15s, stroke 0.15s;
+}
+
+.star:hover {
+  transform: scale(1.15);
+}
+
+.star.active svg {
+  fill: #F59E0B;
+  stroke: #D97706;
+}
+
+/* Textarea styling */
+.feedback-modal-body textarea {
+  width: 100%;
+  padding: var(--spacing-md);
+  font-size: 0.95rem;
+  font-family: inherit;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.feedback-modal-body textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(232, 119, 34, 0.15);
+}
+
+/* Send button */
+.feedback-send-btn {
+  width: 100%;
+  margin-top: var(--spacing-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.send-icon {
+  transition: transform 0.2s;
+}
+
+.feedback-send-btn:hover:not(:disabled) .send-icon {
+  transform: translateX(3px);
+}
+
+/* Status messages */
+.feedback-status {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  text-align: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.feedback-status-success {
+  background: #E8F5E9;
+  color: #2E7D32;
+  border: 1px solid #A5D6A7;
+}
+
+.feedback-status-error {
+  background: #FFEBEE;
+  color: #C62828;
+  border: 1px solid #FFCDD2;
+}

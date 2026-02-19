@@ -112,3 +112,52 @@ class TestPersonalizeBody:
         body = "Hi {student_name},\n\nWelcome!"
         result = _personalize_body(body, "María")
         assert result == "Hi María,\n\nWelcome!"
+
+
+class TestFeedbackRateLimit:
+    """Tests for _check_feedback_rate_limit cooldown logic."""
+
+    def setup_method(self):
+        """Clear feedback rate limit state before each test."""
+        from service.main import _feedback_last_sent
+        _feedback_last_sent.clear()
+
+    def test_first_request_passes(self):
+        from service.main import _check_feedback_rate_limit
+        result = _check_feedback_rate_limit("test@example.com")
+        assert result is None
+
+    def test_second_request_within_cooldown_blocked(self):
+        from service.main import _check_feedback_rate_limit
+        # First request
+        _check_feedback_rate_limit("test@example.com")
+        # Immediate second request should be blocked
+        result = _check_feedback_rate_limit("test@example.com")
+        assert result is not None
+        assert "wait" in result.lower()
+
+    def test_different_key_not_blocked(self):
+        from service.main import _check_feedback_rate_limit
+        _check_feedback_rate_limit("user1@example.com")
+        result = _check_feedback_rate_limit("user2@example.com")
+        assert result is None
+
+    def test_request_after_cooldown_passes(self):
+        import time
+        from service.main import _check_feedback_rate_limit, _feedback_last_sent, _FEEDBACK_COOLDOWN_SECS
+        # First request
+        _check_feedback_rate_limit("test@example.com")
+        # Manually age the timestamp past the cooldown
+        _feedback_last_sent["test@example.com"] = time.monotonic() - _FEEDBACK_COOLDOWN_SECS - 1
+        # Should pass now
+        result = _check_feedback_rate_limit("test@example.com")
+        assert result is None
+
+    def test_ip_based_rate_limit_when_no_email(self):
+        from service.main import _check_feedback_rate_limit
+        # Use IP as key (simulates anonymous user)
+        result = _check_feedback_rate_limit("192.168.1.1")
+        assert result is None
+        # Second request from same IP should be blocked
+        result = _check_feedback_rate_limit("192.168.1.1")
+        assert result is not None

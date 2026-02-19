@@ -674,3 +674,201 @@ def send_magic_link(request: Request):
         logger.error(f"Error in send_magic_link: {e}", exc_info=True)
         return {'error': 'Failed to send sign-in link. Please try again.'}, 500, cors_headers
 
+
+# ============================================================================
+# HTTP Cloud Function: submit_feedback (unauthenticated)
+# ============================================================================
+
+# Feedback rate limiting — separate from magic link rate limits
+_FEEDBACK_COOLDOWN_SECS = 5   # 1 feedback per 5 seconds per email or IP
+_feedback_last_sent: dict[str, float] = {}   # key (email or IP) → timestamp
+
+
+def _check_feedback_rate_limit(key: str) -> str | None:
+    """Return an error message if feedback rate-limited, None if OK."""
+    import time
+    now = time.monotonic()
+
+    with _rate_lock:
+        last = _feedback_last_sent.get(key)
+        if last and (now - last) < _FEEDBACK_COOLDOWN_SECS:
+            return "Please wait a few seconds before sending more feedback."
+
+        _feedback_last_sent[key] = now
+
+    return None  # OK
+
+
+@functions_framework.http
+@log_function
+def submit_feedback(request: Request):
+    """HTTP Cloud Function to receive user feedback and email it to the bot inbox.
+
+    Unauthenticated — anyone can submit feedback (login page users too).
+    Rate-limited to 1 submit per 5 seconds per email or IP.
+
+    Request body:
+    {
+        "message": "Great tool!",
+        "stars": 4,
+        "page": "scenarios",
+        "email": "student@example.com",   // optional, auto-filled if logged in
+        "consoleErrors": ["error1", ...]   // optional
+    }
+
+    Response:
+    {
+        "success": true
+    }
+    """
+
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        headers = {
+            'Access-Control-Allow-Origin': CORS_ORIGIN,
+            'Access-Control-Allow-Methods': 'POST',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '3600'
+        }
+        return ('', 204, headers)
+
+    cors_headers = {
+        'Access-Control-Allow-Origin': CORS_ORIGIN,
+        'Content-Type': 'application/json',
+    }
+
+    try:
+        request_json = request.get_json() or {}
+
+        message = (request_json.get('message') or '').strip()
+        stars = request_json.get('stars')
+        page = (request_json.get('page') or 'unknown').strip()
+        email = (request_json.get('email') or '').strip().lower()
+        console_errors = request_json.get('consoleErrors') or []
+
+        # Validate required fields
+        if not message:
+            return {'error': 'Message is required'}, 400, cors_headers
+        if not isinstance(stars, int) or not (1 <= stars <= 5):
+            return {'error': 'Stars must be an integer from 1 to 5'}, 400, cors_headers
+
+        # Rate limit — key on email if provided, otherwise on IP
+        client_ip = _get_client_ip(request)
+        rate_key = email if email else client_ip
+        rate_error = _check_feedback_rate_limit(rate_key)
+        if rate_error:
+            logger.warning(f"Feedback rate limited: key={rate_key} ip={client_ip}")
+            return {'error': rate_error}, 429, cors_headers
+
+        logger.info(f"Feedback received: stars={stars} page={page} email={email or 'anonymous'} ip={client_ip}")
+
+        # Build the feedback email
+        star_display = '★' * stars + '☆' * (5 - stars)
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+
+        # Plain text version
+        plain_lines = [
+            f"New feedback from Pathway Email Bot",
+            f"",
+            f"Stars: {star_display} ({stars}/5)",
+            f"Page:  {page}",
+            f"From:  {email or 'anonymous'}",
+            f"IP:    {client_ip}",
+            f"Time:  {timestamp}",
+            f"",
+            f"Message:",
+            f"{message}",
+        ]
+        if console_errors:
+            plain_lines.append("")
+            plain_lines.append("Console Errors:")
+            for err in console_errors[:10]:
+                plain_lines.append(f"  • {err}")
+
+        email_body = "\n".join(plain_lines)
+
+        # HTML version
+        star_html = ''.join(
+            f'<span style="color:#F59E0B;font-size:24px;">★</span>' if i < stars
+            else f'<span style="color:#D1D5DB;font-size:24px;">☆</span>'
+            for i in range(5)
+        )
+
+        error_section = ""
+        if console_errors:
+            error_items = "".join(
+                f'<li style="margin-bottom:4px;font-family:monospace;font-size:12px;color:#991B1B;">{err}</li>'
+                for err in console_errors[:10]
+            )
+            error_section = f"""
+            <tr><td style="padding:16px 32px 24px;">
+              <h3 style="margin:0 0 8px;color:#991B1B;font-size:14px;">🐛 Console Errors</h3>
+              <ul style="margin:0;padding-left:20px;">{error_items}</ul>
+            </td></tr>"""
+
+        email_html = f"""\
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0; padding:0; background:#f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5; padding:40px 20px;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#E87722,#C45A00); padding:24px 32px; text-align:center;">
+          <h1 style="margin:0; color:#ffffff; font-size:20px; font-weight:600;">
+            💬 New Feedback
+          </h1>
+        </td></tr>
+        <!-- Stars -->
+        <tr><td style="padding:24px 32px 8px; text-align:center;">
+          {star_html}
+          <p style="margin:4px 0 0; color:#6B7280; font-size:14px;">{stars} out of 5 stars</p>
+        </td></tr>
+        <!-- Message -->
+        <tr><td style="padding:16px 32px;">
+          <h3 style="margin:0 0 8px; color:#374151; font-size:14px;">Message</h3>
+          <div style="background:#F9FAFB; border:1px solid #E5E7EB; border-radius:8px; padding:16px; color:#374151; font-size:14px; line-height:1.6; white-space:pre-wrap;">{message}</div>
+        </td></tr>
+        <!-- Metadata -->
+        <tr><td style="padding:8px 32px 24px;">
+          <table width="100%" cellpadding="4" cellspacing="0" style="font-size:13px; color:#6B7280;">
+            <tr><td style="font-weight:600;width:60px;">From</td><td>{email or 'anonymous'}</td></tr>
+            <tr><td style="font-weight:600;">Page</td><td>{page}</td></tr>
+            <tr><td style="font-weight:600;">IP</td><td>{client_ip}</td></tr>
+            <tr><td style="font-weight:600;">Time</td><td>{timestamp}</td></tr>
+          </table>
+        </td></tr>{error_section}
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+        # Send via Gmail API to the bot's own inbox
+        gmail_service = get_gmail_service()
+        if not gmail_service:
+            logger.error("Failed to initialize Gmail service for feedback")
+            return {'error': 'Email service unavailable'}, 500, cors_headers
+
+        raw_message = build_mime_message(
+            from_addr=BOT_EMAIL,
+            from_name="PEB Feedback",
+            to_addr=BOT_EMAIL,
+            subject=f"[Feedback] {star_display} — {page} page",
+            body=email_body,
+            html=email_html,
+        )
+
+        gmail_service.users().messages().send(
+            userId='me', body={'raw': raw_message}
+        ).execute()
+
+        logger.info(f"Feedback email sent: stars={stars} from={email or 'anonymous'}")
+
+        return {'success': True}, 200, cors_headers
+
+    except Exception as e:
+        logger.error(f"Error in submit_feedback: {e}", exc_info=True)
+        return {'error': 'Failed to send feedback. Please try again.'}, 500, cors_headers
+
