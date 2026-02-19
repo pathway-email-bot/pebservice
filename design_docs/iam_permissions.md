@@ -3,12 +3,14 @@
 ## Service Accounts
 
 ### Cloud Functions Runtime Service Account
-Both Cloud Functions run as the default Compute Engine service account:
-- **Account**: `687061619628-compute@developer.gserviceaccount.com`
+All Cloud Functions run as the dedicated runtime service account:
+- **Account**: `peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com`
 - **Purpose**: Execute Cloud Functions code at runtime
 - **Functions using this account**:
   - `process_email` (Pub/Sub triggered)
-  - `start_scenario` (HTTP triggered)
+  - `start_scenario` (HTTP triggered, unauthenticated)
+  - `send_magic_link` (HTTP triggered, unauthenticated)
+  - `submit_feedback` (HTTP triggered, unauthenticated)
 
 ### GitHub Actions Deployment Service Account
 GitHub Actions uses this service account to deploy Cloud Functions:
@@ -84,6 +86,17 @@ gcloud projects add-iam-policy-binding pathway-email-bot-6543 \
 
 **Status**: ✅ Configured (2026-02-06)
 
+#### Firebase Authentication Admin
+The `send_magic_link` function needs to generate Firebase Auth email action links via `generate_sign_in_with_email_link()`:
+
+```bash
+gcloud projects add-iam-policy-binding pathway-email-bot-6543 \
+  --member="serviceAccount:peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com" \
+  --role="roles/firebaseauth.admin"
+```
+
+**Status**: ✅ Configured (2026-02-18)
+
 #### Firestore Access
 The service account needs read/write access to Firestore for:
 - Reading scenario configurations
@@ -104,10 +117,10 @@ For `process_email` function to receive email notifications:
 ### Secrets in GCP Secret Manager
 | Secret Name | Purpose | Used By |
 |------------|---------|---------|
-| `gmail-client-id` | OAuth 2.0 Client ID | Both functions |
-| `gmail-client-secret` | OAuth 2.0 Client Secret | Both functions |
-| `gmail-refresh-token-bot` | Refresh token for pathwayemailbot@gmail.com | Both functions |
-| `openai-api-key` | OpenAI API key for grading | process_email function |
+| `gmail-client-id` | OAuth 2.0 Client ID | All functions |
+| `gmail-client-secret` | OAuth 2.0 Client Secret | All functions |
+| `gmail-refresh-token-bot` | Refresh token for pathwayemailbot@gmail.com | All functions |
+| `openai-api-key` | OpenAI API key for grading | `process_email`, `start_scenario` |
 - `OPENAI_API_KEY` → `openai-api-key:latest`
 
 ## Deployment Commands
@@ -154,6 +167,8 @@ gcloud secrets get-iam-policy gmail-refresh-token-bot
 # Check what service account a function uses
 gcloud functions describe process_email --gen2 --region=us-central1 --format="value(serviceConfig.serviceAccountEmail)"
 gcloud functions describe start_scenario --gen2 --region=us-central1 --format="value(serviceConfig.serviceAccountEmail)"
+gcloud functions describe send_magic_link --gen2 --region=us-central1 --format="value(serviceConfig.serviceAccountEmail)"
+gcloud functions describe submit_feedback --gen2 --region=us-central1 --format="value(serviceConfig.serviceAccountEmail)"
 ```
 
 ### Test Secret Access
@@ -169,7 +184,7 @@ print(os.environ.get('GMAIL_CLIENT_ID'))  # Should print the client ID
 
 2. **Secret Rotation**: OAuth refresh tokens should be rotated periodically. See [todo_some_other_day.md](../todo_some_other_day.md) for automation plans.
 
-3. **Unauthenticated HTTP Function**: `start_scenario` allows unauthenticated access because Firebase Auth validation happens in the function code, not at the Cloud Functions level.
+3. **Unauthenticated HTTP Functions**: `start_scenario`, `send_magic_link`, and `submit_feedback` allow unauthenticated access. `start_scenario` validates Firebase Auth tokens in code. `send_magic_link` and `submit_feedback` are pre-login endpoints protected by CORS, rate limiting, and input validation.
 
 4. **Least Privilege**: The service account only has access to the three Gmail secrets. Firestore access is implicitly granted via Firebase Admin SDK.
 

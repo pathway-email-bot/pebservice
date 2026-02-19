@@ -615,7 +615,7 @@ def send_magic_link(request: Request):
     <tr><td align="center">
       <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
         <!-- Header -->
-        <tr><td style="background:linear-gradient(135deg,#2563eb,#1d4ed8); padding:32px 40px; text-align:center;">
+        <tr><td style="background:linear-gradient(135deg,#E87722,#C45A00); padding:32px 40px; text-align:center;">
           <h1 style="margin:0; color:#ffffff; font-size:22px; font-weight:600; letter-spacing:-0.3px;">
             &#x1F4E7; Pathway Email Bot
           </h1>
@@ -628,9 +628,9 @@ def send_magic_link(request: Request):
           <table width="100%" cellpadding="0" cellspacing="0">
             <tr><td align="center" style="padding:8px 0 28px;">
               <a href="{link}" target="_blank"
-                 style="display:inline-block; background:#2563eb; color:#ffffff; padding:14px 40px;
+                 style="display:inline-block; background:#E87722; color:#ffffff; padding:14px 40px;
                         border-radius:8px; font-size:16px; font-weight:600; text-decoration:none;
-                        letter-spacing:0.2px; box-shadow:0 2px 4px rgba(37,99,235,0.3);">
+                        letter-spacing:0.2px; box-shadow:0 2px 4px rgba(232,119,34,0.3);">
                 Sign in to Pathway Email Bot
               </a>
             </td></tr>
@@ -638,7 +638,7 @@ def send_magic_link(request: Request):
           <p style="margin:0 0 6px; color:#6b7280; font-size:13px; line-height:1.5;">
             Or copy and paste this link into your browser:
           </p>
-          <p style="margin:0 0 24px; word-break:break-all; color:#2563eb; font-size:13px; line-height:1.5;">
+          <p style="margin:0 0 24px; word-break:break-all; color:#E87722; font-size:13px; line-height:1.5;">
             {link}
           </p>
           <hr style="border:none; border-top:1px solid #e5e7eb; margin:0 0 20px;">
