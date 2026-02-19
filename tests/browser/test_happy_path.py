@@ -166,7 +166,7 @@ def _find_magic_link(gmail_service, timeout: int = MAGIC_LINK_WAIT, sent_after: 
         try:
             results = gmail_service.users().messages().list(
                 userId="me",
-                q='from:noreply subject:"Sign in"',
+                q=f'from:{BOT_EMAIL} subject:"Sign in to Pathway Email Bot"',
                 maxResults=5,
                 includeSpamTrash=True,
             ).execute()
