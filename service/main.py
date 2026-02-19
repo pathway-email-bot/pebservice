@@ -145,29 +145,30 @@ def process_email(cloud_event):
                 return "OK"
 
             try:
-                logger.debug(f"Fetching history starting from historyId={history_id}")
+                logger.info(f"Fetching history starting from historyId={history_id}")
                 history = service.users().history().list(userId='me', startHistoryId=history_id).execute()
                 changes = history.get('history', [])
 
                 if not changes:
-                    logger.debug("No history changes found. Attempting fallback to latest message.")
+                    logger.info("No history changes found. Attempting fallback to latest message.")
                     try:
                         response = service.users().messages().list(userId='me', maxResults=1).execute()
                         messages = response.get('messages', [])
                         if messages:
                             latest_msg_id = messages[0]['id']
-                            logger.debug(f"Fallback found message ID: {latest_msg_id}")
                             msg = service.users().messages().get(userId='me', id=latest_msg_id, format='full').execute()
+                            fb_sender = get_header(msg.get('payload', {}).get('headers', []), 'From', 'Unknown')
+                            logger.info(f"Fallback processing message {latest_msg_id} from: {fb_sender}")
                             process_single_message(service, msg)
                             return "OK"
                         else:
-                            logger.debug("Fallback found no messages either")
+                            logger.info("Fallback found no messages either")
                             return "OK"
                     except Exception as fb_e:
                         logger.error(f"Fallback failed: {fb_e}", exc_info=True)
                         return "OK"
 
-                logger.debug(f"Found {len(changes)} history changes")
+                logger.info(f"Found {len(changes)} history changes")
 
                 found_message = False
                 for change in changes:
@@ -175,13 +176,13 @@ def process_email(cloud_event):
                     for record in messages_added:
                         message_id = record.get('message', {}).get('id')
                         if message_id:
-                             logger.debug(f"Processing added message ID: {message_id}")
+                             logger.info(f"Processing added message ID: {message_id}")
                              msg = service.users().messages().get(userId='me', id=message_id, format='full').execute()
                              process_single_message(service, msg)
                              found_message = True
 
                 if not found_message:
-                    logger.debug("No 'messagesAdded' events found in history")
+                    logger.info("No 'messagesAdded' events found in history")
 
             except Exception as e:
                 logger.error(f"Error fetching history: {e}", exc_info=True)
@@ -254,6 +255,8 @@ def process_single_message(service, msg):
             logger.error("Missing OPENAI_API_KEY")
             return
 
+        logger.info(f"Grading email for scenario {scenario_id} from {sender_email}...")
+
         agent = EmailAgent(
             model="gpt-4o",
             temperature=0.2,
@@ -295,7 +298,7 @@ def process_single_message(service, msg):
                 rubric_scores=rubric_scores,
                 revision_example=result.grading.revision_example,
             )
-            logger.info(f"Updated Firestore: score={result.grading.total_score}/{result.grading.max_total_score}")
+            logger.info(f"Grading complete. Updated Firestore: score={result.grading.total_score}/{result.grading.max_total_score}")
 
         # Send reply
         if result.counterpart_reply:
@@ -326,7 +329,7 @@ def process_single_message(service, msg):
             logger.warning(f"Agent returned empty response for {sender}.")
 
     except Exception as e:
-        logger.error(f"Error inside process_single_message: {e}", exc_info=True)
+        logger.error(f"process_single_message FAILED for {sender}: {e}", exc_info=True)
 
 
 # ============================================================================

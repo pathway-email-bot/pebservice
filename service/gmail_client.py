@@ -106,6 +106,7 @@ def send_reply(service, original_msg, reply_text):
 
     except Exception as e:
         logger.error(f"Error sending reply: {e}", exc_info=True)
+        raise
 
 
 @log_function
