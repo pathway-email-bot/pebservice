@@ -8,7 +8,7 @@
   "counterpart_style": "You are a busy but fair office manager. You appreciate clear questions and you prefer that people ask instead of guessing. You are direct but polite in your replies.",
   "counterpart_context": "You sent your assistant a short message asking them to clean up the notes from yesterday's meeting.",
   "grading_focus": "Focus on whether the student is polite, restates their understanding of the task, asks specific questions, and clearly shows they want to do the work correctly and on time.",
-  "starter_sender_name": "Karen Lopez (Office Manager)",
+  "starter_sender_name": "Karen Lopez (Office Manager - Bot)",
   "starter_subject": "Notes from yesterday",
   "starter_email_body": "Hey {student_name},\n\nCan you clean up the notes from yesterday's meeting? I need them looking good before I share them with the team.\n\nThanks,\nKaren",
   "starter_email_generation_hint": "Write a brief email from the office manager asking the assistant to 'clean up the notes from yesterday's meeting' without giving many details about format or deadline."

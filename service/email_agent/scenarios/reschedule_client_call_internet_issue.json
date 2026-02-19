@@ -8,7 +8,7 @@
   "counterpart_style": "You are a small business owner who is busy but understanding. You value clear communication and appreciate when someone gives options and respects your time.",
   "counterpart_context": "You sent a reminder about today's check-in call at 2:00 PM.",
   "grading_focus": "Focus on whether the student apologizes briefly, explains the problem clearly without long excuses, offers specific new times, and shows respect for the client's schedule.",
-  "starter_sender_name": "Megan Patel (Client)",
+  "starter_sender_name": "Megan Patel (Client - Bot)",
   "starter_subject": "Today's check-in call",
   "starter_email_body": "Hi {student_name},\n\nJust a quick reminder about our check-in call today at 2:00 PM. I'd like to go over the social media calendar for next week and the status of the invoice follow-ups.\n\nI've got a hard stop at 2:45, so if you could have those items ready that would be great.\n\nTalk soon,\nMegan",
   "starter_email_generation_hint": "Write a short email from the client confirming a video call time for today and saying they are looking forward to a quick check-in about ongoing tasks."

@@ -8,7 +8,7 @@
   "counterpart_style": "You are a customer who is slightly frustrated but polite. You simply want your problem to be acknowledged and fixed.",
   "counterpart_context": "You are a customer who wrote about a wrong item color in your recent order and a delayed support response.",
   "grading_focus": "Focus on whether the student apologizes appropriately, shows understanding of the customer's problem, explains the solution clearly, and keeps a respectful and reassuring tone.",
-  "starter_sender_name": "Alex Carter (Customer)",
+  "starter_sender_name": "Alex Carter (Customer - Bot)",
   "starter_subject": "Concern about my recent order",
   "starter_email_body": "Hi {student_name},\n\nI placed an order last Tuesday (order #4821) and received it yesterday, but the color of the phone case is wrong — I ordered the navy blue one, not black.\n\nI also emailed your support team about this three days ago but haven't heard back. I understand you might be busy, but I'd really appreciate some help getting this sorted out.\n\nCould you let me know what the options are? I'd prefer an exchange if possible.\n\nThank you,\nAlex Carter",
   "starter_email_generation_hint": "Write an email from a customer politely complaining that their order had a small mistake or that support replied slower than they expected, and asking what can be done."

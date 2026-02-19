@@ -8,7 +8,7 @@
   "counterpart_style": "You are a small business owner who sometimes gets busy and forgets to pay on time. You appreciate clear, professional reminders that include the details you need.",
   "counterpart_context": "Your administrative assistant sent you Invoice #147 about two weeks ago. You have not responded to it yet.",
   "grading_focus": "Focus on whether the student clearly mentions the invoice and date, keeps a polite and calm tone, and makes a clear request for an update on payment.",
-  "starter_sender_name": "Alyssa Ward (Client)",
+  "starter_sender_name": "Alyssa Ward (Client - Bot)",
   "starter_subject": null,
   "starter_email_body": null,
   "starter_email_generation_hint": null

@@ -8,7 +8,7 @@
   "counterpart_style": "You are an HR coordinator who receives many emails every day. You appreciate short, organized messages that clearly list what is needed and by when.",
   "counterpart_context": "The administrative assistant has been helping with onboarding paperwork. You mentioned last week you would send some documents but have not done so yet.",
   "grading_focus": "Focus on whether the student is polite, lists the needed documents clearly, mentions a reasonable time frame, and keeps the email organized and concise.",
-  "starter_sender_name": "Emily Ross (HR Coordinator)",
+  "starter_sender_name": "Emily Ross (HR Coordinator - Bot)",
   "starter_subject": "Re: Onboarding documents",
   "starter_email_body": null,
   "starter_email_generation_hint": "Write a short email from the HR coordinator saying they will send some onboarding documents but not listing them all clearly or giving a specific time."

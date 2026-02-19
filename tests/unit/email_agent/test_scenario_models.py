@@ -66,7 +66,7 @@ class TestScenario:
         assert s.counterpart_style == ""
         assert s.counterpart_context == ""
         assert s.grading_focus == ""
-        assert s.starter_sender_name == "Jordan Smith (Manager)"
+        assert s.starter_sender_name == "Jordan Smith (Manager - Bot)"
         assert s.starter_subject == "Regarding your work today"
         assert s.starter_email_body is None
 

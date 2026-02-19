@@ -8,7 +8,7 @@
   "counterpart_style": "You are a team lead who wants reliable communication. You are firm but want to help the assistant succeed and appreciate a positive attitude toward feedback.",
   "counterpart_context": "You wrote to your assistant giving feedback that their email response times have been slower than expected.",
   "grading_focus": "Focus on whether the student receives the feedback respectfully, keeps explanations short, suggests concrete steps to improve, and maintains a professional tone.",
-  "starter_sender_name": "Laura King (Team Lead)",
+  "starter_sender_name": "Laura King (Team Lead - Bot)",
   "starter_subject": "Response times on recent emails",
   "starter_email_body": "Hi {student_name},\n\nI wanted to bring something up that I've noticed over the past couple of weeks. There have been a few times where emails from me or from other team members sat for several hours before getting a response, and in a couple of cases it was the next day.\n\nI know time zones can be tricky, but our expectation is that messages sent during your working hours get a reply within about an hour, even if it's just a quick acknowledgment.\n\nI'd like to hear your thoughts on this and what we can do to improve things. You're doing great work otherwise — I just want to make sure communication stays tight.\n\nBest,\nLaura",
   "starter_email_generation_hint": "Write an email from the team lead giving calm but clear feedback that the assistant's email replies have been slower than needed, and asking them to improve their response times."

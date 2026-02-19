@@ -8,7 +8,7 @@
   "counterpart_style": "You are a project coordinator who is under time pressure but open to feedback. You appreciate honest estimates and concrete suggestions.",
   "counterpart_context": "You assigned your data entry worker a large data entry task with a deadline of end of day tomorrow.",
   "grading_focus": "Focus on whether the student stays polite, clearly explains the problem with the deadline, gives a realistic plan, and suggests options instead of just saying 'no'.",
-  "starter_sender_name": "Lena Brooks (Project Coordinator)",
+  "starter_sender_name": "Lena Brooks (Project Coordinator - Bot)",
   "starter_subject": "Data entry needed by tomorrow",
   "starter_email_body": "Hi {student_name},\n\nWe just got a batch of 450 customer records that need to be entered into the system. The client is expecting the updated database by end of day tomorrow, so I need all of these completed by then.\n\nThe spreadsheet is in the shared drive under \"Incoming Data > March Batch.\" Each record has about 15 fields. Please follow the standard formatting guidelines.\n\nLet me know once you get started.\n\nThanks,\nLena",
   "starter_email_generation_hint": "Write a short email from the project coordinator assigning a large data entry task and asking for it to be completed by tomorrow, without asking if the timeline is realistic."

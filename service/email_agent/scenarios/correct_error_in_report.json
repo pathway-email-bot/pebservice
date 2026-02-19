@@ -8,7 +8,7 @@
   "counterpart_style": "You are an operations supervisor who values honesty and accuracy. You prefer people tell you about mistakes quickly with clear corrections.",
   "counterpart_context": "Your data entry worker sent you a spreadsheet called 'Q1 Regional Sales Summary' yesterday. You have not reviewed it in detail yet.",
   "grading_focus": "Focus on whether the student is honest about the mistake, keeps the explanation short and clear, mentions the corrected file, and shows responsibility without long excuses.",
-  "starter_sender_name": "Daniel Green (Operations Supervisor)",
+  "starter_sender_name": "Daniel Green (Operations Supervisor - Bot)",
   "starter_subject": "Yesterday's data entry file",
   "starter_email_body": null,
   "starter_email_generation_hint": "Write a short email from the supervisor thanking the worker for sending the spreadsheet and saying they will review the numbers today."

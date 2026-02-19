@@ -8,7 +8,7 @@
   "counterpart_style": "You are a department manager who understands that schedules can change but dislikes last-minute surprises. You appreciate when people bring solutions, not just problems.",
   "counterpart_context": "You sent a reminder about tomorrow's weekly team check-in at 10:00 AM.",
   "grading_focus": "Focus on whether the student clearly explains the conflict, suggests new times, keeps the message polite and short, and shows that they are still engaged with the work.",
-  "starter_sender_name": "Michael Johns (Department Manager)",
+  "starter_sender_name": "Michael Johns (Department Manager - Bot)",
   "starter_subject": "Reminder: team check-in tomorrow",
   "starter_email_body": "Hi {student_name},\n\nJust a reminder that we have our weekly check-in tomorrow at 10:00 AM. We'll be going over project updates and the Q2 priorities list.\n\nPlease come prepared with a quick summary of where things stand on your end. I'd like to keep it to 30 minutes.\n\nSee you then,\nMichael",
   "starter_email_generation_hint": "Write a brief reminder email from the manager confirming a team check-in time and expecting everyone to attend."

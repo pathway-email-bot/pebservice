@@ -215,7 +215,7 @@ def process_single_message(service, msg):
         logger.info(f"Email from: {sender_email} | Subject: {subject}")
 
         # Guard: Don't reply to self or bots to avoid loops
-        if "google" in sender.lower() or "bot" in sender.lower() or "noreply" in sender.lower():
+        if sender_email == BOT_EMAIL or "noreply" in sender_email.lower():
              logger.info(f"Skipping auto-reply for likely bot/self: {sender}")
              return
 

@@ -35,7 +35,7 @@ class Scenario:
     interaction_type: InteractionType = InteractionType.INITIATE
 
     # Starter email
-    starter_sender_name: str = "Jordan Smith (Manager)"
+    starter_sender_name: str = "Jordan Smith (Manager - Bot)"
     starter_subject: str = "Regarding your work today"
     starter_email_body: Optional[str] = None
     starter_email_generation_hint: str = (
