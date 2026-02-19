@@ -44,8 +44,9 @@ BOT_EMAIL = "pathwayemailbot@gmail.com"
 # Default to production (GitHub Pages); override with PORTAL_URL for local dev
 PORTAL_URL = os.environ.get("PORTAL_URL", "https://pathway-email-bot.github.io/pebservice/")
 
-# Which scenario to run (must be interaction_type=initiate)
-SCENARIO_ID = "missed_remote_standup"
+# Which scenarios to run
+SCENARIO_ID = "missed_remote_standup"            # interaction_type=initiate
+REPLY_SCENARIO_ID = "clarify_vague_task_admin"    # interaction_type=reply
 
 POLL_TIMEOUT = 120  # seconds to wait for grading
 POLL_INTERVAL = 5   # seconds between polls
@@ -401,4 +402,104 @@ class TestHappyPath:
             f'.scenario-card[data-scenario-id="{scenario_id}"] .grading-results'
         )
         expect(feedback).to_be_visible(timeout=5000)
-        _snap(page, "10_DONE_score_visible")
+        _snap(page, "10_initiate_DONE")
+
+        # ════════════════════════════════════════════════════════════
+        # PART 2: Reply scenario — clarify_vague_task_admin
+        # ════════════════════════════════════════════════════════════
+
+        reply_scenario_id = REPLY_SCENARIO_ID
+
+        # ── Step 9: Start the reply scenario ─────────────────────
+        reply_header = page.locator(
+            f'.scenario-header-clickable[data-scenario-id="{reply_scenario_id}"]'
+        )
+        reply_header.click()
+        _log(f"Expanding drawer for reply scenario: {reply_scenario_id}")
+
+        reply_start_btn = page.locator(
+            f'.start-btn[data-scenario-id="{reply_scenario_id}"]'
+        )
+        expect(reply_start_btn).to_be_visible(timeout=5000)
+        _snap(page, "11_reply_drawer_expanded")
+
+        # Record time before clicking Start (bot sends starter email after this)
+        start_reply_time = time.time() - 5  # 5s buffer for clock skew
+        reply_start_btn.click()
+        _log("Clicked Start on reply scenario — waiting for starter email...")
+
+        # Wait for the active drawer to appear (Cloud Function sends starter email)
+        expect(
+            page.locator(f'.scenario-card[data-scenario-id="{reply_scenario_id}"].active')
+        ).to_be_visible(timeout=30000)
+        _snap(page, "12_reply_scenario_started")
+
+        # ── Step 10: Find the bot's starter email ────────────────
+        from tests.helpers.gmail_helpers import find_bot_email, send_reply_email
+
+        starter_msg = find_bot_email(
+            gmail,
+            subject_contains="Notes from yesterday",
+            sent_after=start_reply_time,
+            timeout=60,
+        )
+        starter_subject = ""
+        for h in starter_msg.get("payload", {}).get("headers", []):
+            if h["name"] == "Subject":
+                starter_subject = h["value"]
+                break
+        _log(f"Found starter email: {starter_subject}")
+        _snap(page, "13_starter_email_found")
+
+        # ── Step 11: Reply to the starter email ──────────────────
+        reply_body = (
+            "Hi Karen,\n\n"
+            "Thank you for the message. I'd be happy to clean up the meeting notes.\n\n"
+            "Before I get started, I want to make sure I do this correctly:\n"
+            "1. What format would you like — bullet points, a summary, or the full transcript cleaned up?\n"
+            "2. When do you need them by?\n"
+            "3. Is there anything specific you'd like me to highlight or leave out?\n\n"
+            "I want to make sure the final version is exactly what you need.\n\n"
+            "Best regards"
+        )
+
+        send_reply_email(
+            gmail,
+            original_msg=starter_msg,
+            from_email=TEST_EMAIL,
+            body=reply_body,
+        )
+        _log("Sent reply to starter email")
+        _snap(page, "14_reply_sent")
+
+        # ── Step 12: Wait for score to appear in UI ──────────────
+        reply_score_locator = page.locator(
+            f'.scenario-card[data-scenario-id="{reply_scenario_id}"] .score-badge'
+        )
+
+        start_time = time.time()
+        while time.time() - start_time < POLL_TIMEOUT:
+            if reply_score_locator.is_visible():
+                text = reply_score_locator.inner_text()
+                if "/" in text:
+                    _log(f"Reply scenario score appeared: {text}")
+                    break
+            time.sleep(POLL_INTERVAL)
+            if int(time.time() - start_time) % 10 == 0:
+                _snap(page, f"15_reply_waiting_{int(time.time() - start_time)}s")
+        else:
+            _snap(page, "15_reply_TIMEOUT_no_score")
+            pytest.fail(
+                f"Reply scenario score did not appear within {POLL_TIMEOUT}s. "
+                f"Check that grading pipeline is working for reply scenarios."
+            )
+
+        # ── Step 13: Assert score and feedback ────────────────────
+        reply_score_text = reply_score_locator.inner_text()
+        assert "/" in reply_score_text, f"Expected score format 'X/Y', got: {reply_score_text}"
+
+        reply_feedback = page.locator(
+            f'.scenario-card[data-scenario-id="{reply_scenario_id}"] .grading-results'
+        )
+        expect(reply_feedback).to_be_visible(timeout=5000)
+        _snap(page, "16_DONE_reply_score_visible")
