@@ -1,44 +1,14 @@
 # Pathway Email Bot 📧
 
-**Practice professional email communication and get instant AI-powered feedback.**
+**An educational tool for practicing professional email communication with instant AI-powered feedback.**
 
-> 🌐 **Student Portal**: [https://pathway-email-bot.github.io/pebservice/](https://pathway-email-bot.github.io/pebservice/)
+> 🌐 **Live Portal**: [https://pathway-email-bot.github.io/pebservice/](https://pathway-email-bot.github.io/pebservice/)
 
----
-
-## Table of Contents
-- [For Students & Educators](#-for-students--educators)
-- [Architecture Overview](#-architecture-overview)
-- [For Developers](#-for-developers)
-- [For AI Agents](#-for-ai-agents)
+Students choose a workplace scenario, write an email, and receive rubric-based feedback from GPT-4o — all through their real inbox.
 
 ---
 
-## 👥 For Students & Educators
-
-Pathway Email Bot is an educational tool that helps students develop professional email writing skills through practice and personalized AI-powered feedback.
-
-### How It Works
-1. **Sign up** through the [student portal](https://pathway-email-bot.github.io/pebservice/)
-2. **Choose a scenario** or create your own professional email
-3. **Send your email** to the practice address
-4. **Receive feedback** within minutes with specific suggestions for improvement
-5. **Revise and resubmit** to continue improving
-
-### For Educators
-Integrate Pathway Email Bot into your curriculum to help students:
-- Practice professional communication in a safe environment
-- Receive immediate, consistent feedback
-- Track their progress over time
-- Build confidence before real-world email interactions
-
-📚 **Resources**: Check out the [design documentation](./design_docs) for implementation guides.
-
----
-
-## 🏗️ Architecture Overview
-
-### System Architecture
+## Architecture
 
 ```mermaid
 graph TB
@@ -71,7 +41,7 @@ graph TB
     style FireAuth fill:#ff9800
 ```
 
-### Student Journey (End-to-End)
+### End-to-End Flow
 
 ```mermaid
 sequenceDiagram
@@ -119,77 +89,14 @@ sequenceDiagram
     P->>S: Display grade + feedback
 ```
 
-### Repository Structure
-
-```
-pebservice/
-├── service/                    # Backend email processing service
-│   ├── main.py                # Cloud Function entry points
-│   ├── email_agent/           # AI grading logic (from tjkerby/email_agent)
-│   ├── requirements.txt       # Python dependencies
-│   └── .gcloudignore         # Deployment exclusions
-├── portal/                    # Student-facing web application
-│   ├── src/
-│   │   ├── components/       # React components
-│   │   ├── services/         # Firebase & API clients
-│   │   └── App.tsx           # Main application
-│   ├── public/               # Static assets
-│   └── package.json          # Node dependencies
-├── scripts/                   # Utility scripts
-│   ├── auth_utils.py         # Shared OAuth utility
-│   ├── get_token.py          # Interactive OAuth flow → Secret Manager
-│   └── sync_secrets.py       # Secret synchronization (GCP → local/GitHub)
-├── tests/                    # Test suite
-│   ├── unit/                 # Pure logic tests (fully mocked)
-│   ├── local/                # Tests against real GCP services (pre-deploy)
-│   └── integration/          # Tests against deployed system (post-deploy)
-├── design_docs/              # Architecture & planning documents
-├── .github/workflows/        # CI/CD pipelines
-│   ├── deploy-service.yaml   # Service deployment
-│   └── deploy-portal.yaml    # Portal deployment
-└── firestore.rules           # Database security rules
-```
-
 ---
 
-## 👨‍💻 For Developers
-
-### Quick Start
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/pathway-email-bot/pebservice.git
-   cd pebservice
-   ```
-
-2. **Set up local environment**
-   ```powershell
-   # Install Python dependencies
-   pip install -r requirements.txt
-   
-   # Install portal dependencies
-   cd portal
-   npm install
-   ```
-
-3. **Configure secrets** (see [Secret Management](#secret-management))
-
-4. **Run locally**
-   ```powershell
-   # Run unit tests
-   python -m pytest tests/unit/ -v
-   
-   # Run portal dev server
-   cd portal
-   npm run dev
-   ```
-
-### Technology Stack
+## Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
 | **Backend** | Python 3.11, Google Cloud Functions (Gen 2) |
-| **Frontend** | TypeScript, React, Vite |
+| **Frontend** | TypeScript, Vite |
 | **Database** | Firestore (NoSQL) |
 | **AI** | OpenAI GPT-4o |
 | **Email** | Gmail API with OAuth 2.0 |
@@ -197,158 +104,131 @@ pebservice/
 | **Hosting** | GitHub Pages (Portal), Cloud Functions (Service) |
 | **CI/CD** | GitHub Actions |
 
-### GCP Resources
+---
 
-**Project**: `pathway-email-bot-6543`
+## Repository Structure
 
-| Resource | Name | Purpose |
-|----------|------|---------|
-| Pub/Sub Topic | `email-notifications` | Receives Gmail push notifications |
-| Cloud Function | `process_email` | Core AI logic and email handler |
-| Cloud Function | `start_scenario` | HTTP endpoint for starting scenarios |
-| Firestore Database | `pathway` | Stores attempts and grading results |
-| Secret Manager | Various | OAuth credentials and API keys |
-
-See [service_notes.md](./service_notes.md) for complete resource documentation.
-
-### Deployment
-
-**Automatic deployments** via GitHub Actions:
-- **Service**: Triggered on changes to `service/**` → Deploys to Cloud Functions
-- **Portal**: Triggered on changes to `portal/**` → Deploys to GitHub Pages
-
-**Manual deployment**:
-```powershell
-# Deploy service
-gcloud functions deploy process_email --gen2 --runtime=python311 --region=us-central1 --source=./service --entry-point=process_email --trigger-topic=email-notifications
-
-# Deploy portal
-cd portal
-npm run build
-# Push to gh-pages branch
+```
+pebservice/
+├── service/                    # Backend (Python Cloud Functions)
+│   ├── main.py                # Cloud Function entry points
+│   ├── gmail_client.py        # Gmail API wrapper
+│   ├── email_agent/           # AI grading logic
+│   └── requirements.txt
+├── portal/                    # Frontend (TypeScript/Vite)
+│   ├── src/
+│   │   ├── components/       # UI components
+│   │   ├── services/         # Firebase & API clients
+│   │   └── App.tsx
+│   └── package.json
+├── scripts/                   # Dev & ops utilities
+│   ├── setup_dev.py          # One-stop local setup
+│   └── get_token.py          # OAuth token flow → Secret Manager
+├── tests/
+│   ├── unit/                 # Fully mocked (no GCP access)
+│   ├── local/                # Against real GCP (pre-deploy)
+│   └── integration/          # Against deployed system (post-deploy)
+├── design_docs/              # Architecture & ops docs
+│   ├── service_notes.md     # GCP resources, IAM, secrets, deployment
+│   ├── architecture.md      # Design decisions, Firebase setup
+│   ├── gmail_api_quota_audit.md  # Capacity planning
+│   └── todo.md
+├── .github/workflows/
+│   ├── deploy-service.yaml   # service/** → Cloud Functions
+│   └── deploy-portal.yaml    # portal/** → GitHub Pages
+└── firestore.rules           # Database security rules
 ```
 
-### Secret Management
+---
 
-**GCP Secret Manager is the source of truth**. GitHub Secrets are a shadow copy for CI/CD.
+## Getting Started
+
+### Prerequisites
+- Python 3.11+, Node.js 18+
+- Google Cloud account with access to `pathway-email-bot-6543`
+- GCP CLI (`gcloud`) authenticated
+
+### Setup
 
 ```powershell
-# Sync from GCP to local dev
-python scripts/sync_secrets.py
+# Clone
+git clone https://github.com/pathway-email-bot/pebservice.git
+cd pebservice
 
-# Sync from GCP to both local and GitHub
-python scripts/sync_secrets.py --github
+# Automated setup (creates venv, installs deps, pulls secrets)
+python scripts/setup_dev.py
 
-# List all secrets in GCP
-python scripts/sync_secrets.py --list
+# Portal
+cd portal && npm install
 ```
 
-**Required secrets**:
-- `gmail-client-id` - OAuth Client ID
-- `gmail-client-secret` - OAuth Client Secret
-- `gmail-refresh-token-bot` - Refresh token for pathwayemailbot@gmail.com
-- `openai-api-key` - OpenAI API key
+### Run Locally
 
-### Local Development
-
-**Run tests**:
 ```powershell
-# Python unit tests (no GCP access needed)
+# Service unit tests (no GCP access needed)
 python -m pytest tests/unit/ -v
 
-# Portal TypeScript unit tests (vitest)
-cd portal; npm test
+# Portal dev server
+cd portal && npm run dev
 
-# Local tests — credential/connectivity checks against real GCP services
+# Local tests (requires GCP credentials)
 python -m pytest tests/local/ -v --timeout=30
 
-# Integration tests — exercises the deployed system end-to-end
+# Integration tests (requires deployed system)
 python -m pytest tests/integration/ -v --timeout=180
 ```
 
-> **Note**: Gmail watch is renewed automatically by the service — no manual setup needed.
+---
 
-### Contributing
+## Deployment
 
-We welcome contributions! Please:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+**Automatic** via GitHub Actions — push to `main` and path filters handle the rest:
+- `service/**` changes → deploys Cloud Functions
+- `portal/**` changes → deploys to GitHub Pages
+
+**Manual**:
+```powershell
+# Deploy service (both functions need 512Mi memory)
+gcloud functions deploy process_email --gen2 --region=us-central1 --runtime=python311 --source=./service --entry-point=process_email --trigger-topic=email-notifications --memory=512Mi
+
+gcloud functions deploy start_scenario --gen2 --region=us-central1 --runtime=python311 --source=./service --entry-point=start_scenario --trigger-http --allow-unauthenticated --memory=512Mi
+```
 
 ---
 
-## 🤖 For AI Agents
+## Secrets
 
-### Primary Operator Guidelines
+**GCP Secret Manager is the source of truth.** GitHub Secrets are a shadow copy for CI/CD.
 
-You are the primary operator and consumer of this repository. Follow these guidelines for management and deployment:
+| Secret | Purpose |
+|--------|---------|
+| `gmail-client-id` | OAuth Client ID |
+| `gmail-client-secret` | OAuth Client Secret |
+| `gmail-refresh-token-bot` | Refresh token for pathwayemailbot@gmail.com |
+| `openai-api-key` | OpenAI API key for AI grading |
 
-#### Tooling & Workflow
-- **Repository Management**: Use **GitHub CLI (`gh`)** for managing issues, pull requests, and repository settings
-- **Secrets Management**: All sensitive information **must** be stored as **GitHub Secrets** using `gh secret set`
-- **Infrastructure Management**: Use **Google Cloud CLI (`gcloud`)** or Google Cloud Console for managing GCP resources
-- **Maintenance (CRITICAL)**: **You must update the resource table in `service_notes.md`** whenever a new cloud service or significant resource is added
-- **Deployment**: CI/CD is handled via **GitHub Actions**. Workflows have path filters to deploy only changed components
-
-#### Account Information
-- **Owner**: michaeltreynolds@gmail.com (GCP project owner)
-- **Bot Email**: pathwayemailbot@gmail.com (email that grants refresh token for service)
-
-When asking for credentials, **always specify which account** you need credentials for.
-
-#### Core Architecture Flow
-1. **Trigger**: Email received in Gmail account (pathwayemailbot@gmail.com)
-2. **Notification**: Gmail push notifications → GCP Pub/Sub topic (`email-notifications`)
-3. **Processing**: Pub/Sub subscription → Cloud Function (`process_email`)
-4. **AI Logic**: Cloud Function → OpenAI GPT-4o (via [email_agent](https://github.com/tjkerby/email_agent))
-5. **Response**: Cloud Function → Gmail API (sends feedback to student)
-6. **Storage**: Results stored in Firestore for portal display
-
-#### Key Files to Maintain
-- `service_notes.md` - **CRITICAL**: Update resource table when adding GCP resources
-- `firestore.rules` - Security rules for database access
-- `.github/workflows/` - CI/CD pipeline configurations
-- `scripts/sync_secrets.py` - Secret synchronization tool
-
-#### Common Tasks
-
-**Deploy service changes**:
 ```powershell
-# Automatic: Push to main branch with changes in service/**
-git add service/
-git commit -m "Update service logic"
-git push origin main
-```
-
-**Update secrets**:
-```powershell
-# Sync from GCP Secret Manager to GitHub
+# Sync secrets from GCP → local (and optionally GitHub)
+python scripts/sync_secrets.py
 python scripts/sync_secrets.py --github
 ```
 
-**Gmail watch**: Automatically renewed by the service via `_ensure_watch()`. No manual renewal needed.
-
-**Check deployment status**:
-```powershell
-# View recent workflow runs
-gh run list
-
-# Get function logs
-gcloud functions describe process_email --gen2 --region=us-central1
-```
-
-#### Related Repositories
-- **Prototype**: [michaeltreynolds/email_bot](https://github.com/michaeltreynolds/email_bot) - Initial autoresponder implementation (keyword-based, no AI)
-- **AI Agent**: [tjkerby/email_agent](https://github.com/tjkerby/email_agent) - Source of rubric and feedback functionality
+> All local secret files use the `*.secret.*` naming convention and are git-ignored.
 
 ---
 
-## 📄 License
+## Further Documentation
+
+- **[service_notes.md](./design_docs/service_notes.md)** — GCP resources, IAM roles, Firestore schema, deployment details
+- **[architecture.md](./design_docs/architecture.md)** — Design decisions, Firebase setup commands
+- **[gmail_api_quota_audit.md](./design_docs/gmail_api_quota_audit.md)** — Gmail API capacity analysis and scaling options
+
+### Related Repositories
+- [michaeltreynolds/email_bot](https://github.com/michaeltreynolds/email_bot) — Original prototype (keyword-based, no AI)
+- [tjkerby/email_agent](https://github.com/tjkerby/email_agent) — AI grading rubric source
+
+---
+
+## License
 
 This project is open source and available for educational use.
-
-## 🔒 Privacy
-
-All practice emails are processed securely and used only for providing feedback. See our privacy policy in the [student portal](https://pathway-email-bot.github.io/pebservice/) for details.
