@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from email import message_from_bytes
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 
 from google.cloud import firestore as firestore_lib
 from google.oauth2.credentials import Credentials
@@ -87,7 +88,7 @@ def send_reply(service, original_msg, reply_text):
         # Build a proper MIME message with all required headers
         message = MIMEText(reply_text, "plain")
         message["To"] = sender_email
-        message["From"] = "Pathway Email Bot <pathwayemailbot@gmail.com>"
+        message["From"] = formataddr(("Pathway Email Bot", "pathwayemailbot@gmail.com"))
         message["Subject"] = f"Re: {subject}" if not subject.startswith("Re:") else subject
 
         if message_id:
@@ -128,7 +129,7 @@ def build_mime_message(
         message = MIMEText(body, "plain")
 
     message["To"] = to_addr
-    message["From"] = f"{from_name} <{from_addr}>"
+    message["From"] = formataddr((from_name, from_addr))
     message["Subject"] = subject
     return base64.urlsafe_b64encode(message.as_bytes()).decode()
 
