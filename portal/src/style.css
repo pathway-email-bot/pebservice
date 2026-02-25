@@ -1,12 +1,12 @@
 /* 
  * Student Portal - Global Styles
  * Color scheme: Warm, inviting, encouraging
- * Inspired by BYU Pathways (orange-yellow) with accessible contrasts
+ * Inspired by BYU Pathway (orange-yellow) with accessible contrasts
  */
 
 /* ===== CSS Custom Properties (Design Tokens) ===== */
 :root {
-  /* Primary - Warm Orange (BYU Pathways inspired) */
+  /* Primary - Warm Orange (BYU Pathway inspired) */
   --color-primary: #E87722;
   --color-primary-light: #F5A623;
   --color-primary-dark: #C45A00;

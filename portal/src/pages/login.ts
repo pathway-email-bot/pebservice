@@ -11,7 +11,7 @@ export function renderLoginPage(container: HTMLElement): void {
     <div class="login-page">
       <div class="card login-card">
         <div class="welcome-icon">📧</div>
-        <h1>Welcome to the BYU Pathways Email Tutor!</h1>
+        <h1>Welcome to the BYU Pathway Email Tutor!</h1>
         <p class="subtitle">Practice your professional email skills with real scenarios</p>
         
         <form id="login-form">
