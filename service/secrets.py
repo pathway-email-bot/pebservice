@@ -5,7 +5,7 @@ Provides cached access to GCP project ID and secrets so that callers
 don't each independently construct Secret Manager clients.
 """
 
-import json
+
 import logging
 import os
 

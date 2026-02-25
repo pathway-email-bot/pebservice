@@ -3,7 +3,7 @@ Firestore client for managing user attempts and scenarios.
 """
 from google.cloud import firestore
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional
 import uuid
 
 from .logging_utils import log_function

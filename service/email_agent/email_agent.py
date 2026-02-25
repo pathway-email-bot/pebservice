@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any, Dict, List, Sequence
 
 from langchain_core.output_parsers import StrOutputParser
@@ -57,12 +56,6 @@ class GradingResult:
 class EvaluationAndReply:
     grading: GradingResult
     counterpart_reply: str
-
-
-class TaskType(str, Enum):
-    COUNTERPART_PROMPT = "counterpart_prompt"
-    COUNTERPART_REPLY = "counterpart_reply"
-    GRADE_STUDENT_EMAIL = "grade_student_email"
 
 
 # ----------------- Helpers & prompts -----------------
