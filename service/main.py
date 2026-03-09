@@ -857,7 +857,7 @@ def submit_feedback():
         raw_message = build_mime_message(
             from_addr=BOT_EMAIL,
             from_name="PEB Feedback",
-            to_addr=BOT_EMAIL,
+            to_addr="michaeltreynolds@gmail.com",
             subject=f"[Feedback] {star_display} — {page} page",
             body=email_body,
             html=email_html,
