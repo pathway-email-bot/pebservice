@@ -1,12 +1,13 @@
 /**
- * Cloud Function Warm-Up
+ * Cloud Run Warm-Up
  *
- * Sends fire-and-forget GET requests to each HTTP Cloud Function on page load
- * to force a cold start before the user actually needs them. Debounced via
- * localStorage so pings don't repeat within 5 minutes.
+ * Sends a fire-and-forget GET request to the /warmup endpoint on page load
+ * to force a cold start before the user needs it, and to ensure the Gmail
+ * push-notification watch subscription is active. Debounced via localStorage
+ * so pings don't repeat within 5 minutes.
  *
  * Uses `mode: 'no-cors'` — the opaque response is ignored, but the request
- * is enough to spin up the Cloud Run container behind each function.
+ * is enough to spin up the Cloud Run container and trigger watch renewal.
  */
 
 const CLOUD_FUNCTION_BASE_URL = 'https://peb-service-cnvksk3jla-uc.a.run.app';
@@ -15,7 +16,7 @@ const WARMUP_KEY = 'peb_last_warmup';
 const WARMUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 const ENDPOINTS = [
-    '/health',
+    '/warmup',
 ];
 
 export function warmUpServices(): void {

@@ -877,9 +877,29 @@ def submit_feedback():
         return {'error': 'Failed to send feedback. Please try again.'}, 500, cors_headers
 
 
+@app.route('/warmup', methods=['GET'])
+def warmup():
+    """Warm-up endpoint called on portal page load.
+
+    Warms the container (inherent) and ensures the Gmail push-notification
+    watch subscription is active. Calls ensure_watch() which uses a Firestore
+    transaction to prevent thundering-herd renewals across concurrent requests.
+
+    This endpoint is unauthenticated — it's fire-and-forget from the client.
+    """
+    try:
+        service = get_gmail_service()
+        ensure_watch(service)
+        return jsonify({'status': 'ok', 'watch': 'checked'}), 200
+    except Exception as e:
+        # Don't fail the warmup if watch check errors — container is still warm
+        logger.warning(f"Warmup watch check failed: {e}", exc_info=True)
+        return jsonify({'status': 'ok', 'watch': 'error', 'detail': str(e)}), 200
+
+
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Simple health check endpoint used to warm up the container."""
+    """Simple health check endpoint. No side effects."""
     return "OK", 200
 
 
