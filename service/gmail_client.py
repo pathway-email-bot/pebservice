@@ -2,12 +2,14 @@
 Gmail client utilities for the PEB Service.
 
 Handles Gmail API authentication, sending emails, MIME message building,
-distributed watch renewal, and robust email body extraction.
+distributed watch renewal, robust email body extraction, and send rate limiting.
 """
 
 import base64
 import json
 import logging
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from email import message_from_bytes
 from email.mime.text import MIMEText
@@ -60,8 +62,48 @@ def get_gmail_service():
 
 
 # ============================================================================
-# Email Sending
+# Email Sending (rate-limited)
 # ============================================================================
+
+# Gmail API hidden rate limit: ~20 sends per minute for consumer accounts.
+# We enforce a 3-second minimum gap between sends (60s / 20 = 3s) across ALL
+# endpoints (grading replies, starter emails, magic links, feedback).
+# Thread-safe: concurrent requests queue up rather than burst.
+_send_lock = threading.Lock()
+_last_send_time: float = 0.0
+_SEND_INTERVAL_SECS = 3.0
+
+
+def rate_limited_send(gmail_service, raw_message: str, thread_id: str | None = None) -> dict:
+    """Send an email via Gmail API, respecting the shared rate limit.
+
+    All email sends MUST go through this function to avoid hitting Gmail's
+    ~20 sends/minute limit. Uses a threading.Lock so concurrent requests
+    wait in queue rather than burst.
+
+    Args:
+        gmail_service: Authenticated Gmail API service object.
+        raw_message: Base64-encoded MIME message string.
+        thread_id: Optional thread ID for reply threading.
+
+    Returns:
+        The Gmail API send response dict.
+    """
+    global _last_send_time
+
+    body: dict = {"raw": raw_message}
+    if thread_id:
+        body["threadId"] = thread_id
+
+    with _send_lock:
+        elapsed = time.monotonic() - _last_send_time
+        if elapsed < _SEND_INTERVAL_SECS:
+            time.sleep(_SEND_INTERVAL_SECS - elapsed)
+        result = gmail_service.users().messages().send(userId="me", body=body).execute()
+        _last_send_time = time.monotonic()
+
+    logger.info(f"Email sent (rate-limited). Message ID: {result.get('id')}")
+    return result
 
 
 @log_function
@@ -98,11 +140,8 @@ def send_reply(service, original_msg, reply_text):
         raw_message = base64.urlsafe_b64encode(
             message.as_bytes()
         ).decode("utf-8")
-        body = {"raw": raw_message, "threadId": thread_id}
 
-        sent_msg = (
-            service.users().messages().send(userId="me", body=body).execute()
-        )
+        sent_msg = rate_limited_send(service, raw_message, thread_id=thread_id)
         logger.info(f"Reply SENT successfully. ID: {sent_msg.get('id')}")
 
     except Exception as e:

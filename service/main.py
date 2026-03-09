@@ -52,6 +52,7 @@ from gmail_client import (
     build_mime_message,
     ensure_watch,
     extract_email_body,
+    rate_limited_send,
 )
 from secret_utils import get_openai_api_key
 from auth import verify_token
@@ -433,7 +434,7 @@ def start_scenario():
                 body=body
             )
 
-            gmail_service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
+            rate_limited_send(gmail_service, raw_message)
             logger.info(f"Starter email sent to {student_email} for scenario {scenario_id}")
 
         # Create Firestore attempt only after all fallible work succeeds
@@ -666,9 +667,7 @@ def send_magic_link():
             html=email_html,
         )
 
-        gmail_service.users().messages().send(
-            userId='me', body={'raw': raw_message}
-        ).execute()
+        rate_limited_send(gmail_service, raw_message)
 
         logger.info(f"Magic link email sent to {email} via Gmail API")
 
@@ -864,9 +863,7 @@ def submit_feedback():
             html=email_html,
         )
 
-        gmail_service.users().messages().send(
-            userId='me', body={'raw': raw_message}
-        ).execute()
+        rate_limited_send(gmail_service, raw_message)
 
         logger.info(f"Feedback email sent: stars={stars} from={email or 'anonymous'}")
 
