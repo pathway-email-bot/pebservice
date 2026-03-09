@@ -99,8 +99,11 @@ def rate_limited_send(gmail_service, raw_message: str, thread_id: str | None = N
         elapsed = time.monotonic() - _last_send_time
         if elapsed < _SEND_INTERVAL_SECS:
             time.sleep(_SEND_INTERVAL_SECS - elapsed)
-        result = gmail_service.users().messages().send(userId="me", body=body).execute()
-        _last_send_time = time.monotonic()
+        try:
+            result = gmail_service.users().messages().send(userId="me", body=body).execute()
+        finally:
+            # Update even on failure — a failed API call still counts against Gmail's rate limit
+            _last_send_time = time.monotonic()
 
     logger.info(f"Email sent (rate-limited). Message ID: {result.get('id')}")
     return result
