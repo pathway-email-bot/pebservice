@@ -891,6 +891,15 @@ def warmup():
     concurrent page loads don't redundantly call get_gmail_service().
 
     This endpoint is unauthenticated — it's fire-and-forget from the client.
+
+    IMPORTANT — Watch expiry gap:
+    Gmail watches expire after 7 days. If no one uses the service for 7+ days,
+    the watch expires and emails sent during the gap generate no Pub/Sub
+    notifications. This endpoint renews the watch, but does NOT retroactively
+    process missed emails. The backlog is caught up automatically when the NEXT
+    email arrives after renewal — process_email's history cursor (stored in
+    Firestore) causes history.list to fetch ALL messages since the last cursor,
+    including those from the gap period.
     """
     global _last_warmup_at
     now = datetime.now(timezone.utc)

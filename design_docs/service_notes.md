@@ -109,11 +109,18 @@ firebase deploy --only firestore:rules
 ```
 
 ### Gmail Watch Configuration
-The Gmail API uses push notifications via `users.watch()`. The watch expires every 7 days but is **automatically renewed** by the `_ensure_watch()` function in `main.py`. This uses a Firestore transaction to prevent multiple instances from renewing simultaneously.
+The Gmail API uses push notifications via `users.watch()`. The watch expires every 7 days but is **automatically renewed** by `ensure_watch()` in `gmail_client.py`. This uses a Firestore transaction to prevent multiple instances from renewing simultaneously.
 
 - **Watch status**: stored in Firestore at `system/watch_status`
-- **Renewal trigger**: any call to `start_scenario` checks and renews if needed
+- **Renewal triggers**: `/warmup` endpoint (on page load) and `start_scenario` (on scenario start)
 - **Manual renewal**: no longer needed (previously required `setup_watch.py`)
+
+> **Watch Expiry Gap**: If no one uses the service for 7+ days, the watch expires and emails
+> sent during the gap generate no Pub/Sub notifications (they sit unprocessed in the inbox).
+> When the portal is loaded, `/warmup` renews the watch, but does NOT retroactively process
+> missed emails. The backlog is caught up when the **next** email arrives — `process_email`'s
+> stored history cursor causes `history.list` to fetch all messages since the last cursor,
+> including those from the gap. Google retains history for ~30 days.
 
 ### OAuth Consent Screen & Token Expiration
 - **Status**: Published to **Production** (as of 2026-02-12)
