@@ -877,22 +877,36 @@ def submit_feedback():
         return {'error': 'Failed to send feedback. Please try again.'}, 500, cors_headers
 
 
+# Server-side warmup debounce — skip ensure_watch if checked recently
+_last_warmup_at: datetime | None = None
+_WARMUP_COOLDOWN_SECS = 600  # 10 minutes
+
+
 @app.route('/warmup', methods=['GET'])
 def warmup():
     """Warm-up endpoint called on portal page load.
 
     Warms the container (inherent) and ensures the Gmail push-notification
-    watch subscription is active. Calls ensure_watch() which uses a Firestore
-    transaction to prevent thundering-herd renewals across concurrent requests.
+    watch subscription is active. Uses a server-side 10-minute cooldown so
+    concurrent page loads don't redundantly call get_gmail_service().
 
     This endpoint is unauthenticated — it's fire-and-forget from the client.
     """
+    global _last_warmup_at
+    now = datetime.now(timezone.utc)
+
+    # Fast path: already checked recently
+    if _last_warmup_at and (now - _last_warmup_at).total_seconds() < _WARMUP_COOLDOWN_SECS:
+        return jsonify({'status': 'ok', 'watch': 'skipped', 'reason': 'cooldown'}), 200
+
     try:
         service = get_gmail_service()
         ensure_watch(service)
+        _last_warmup_at = now
         return jsonify({'status': 'ok', 'watch': 'checked'}), 200
     except Exception as e:
         # Don't fail the warmup if watch check errors — container is still warm
+        _last_warmup_at = now  # still count as checked to avoid retry storms
         logger.warning(f"Warmup watch check failed: {e}", exc_info=True)
         return jsonify({'status': 'ok', 'watch': 'error', 'detail': str(e)}), 200
 
