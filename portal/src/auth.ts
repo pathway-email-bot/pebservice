@@ -22,7 +22,7 @@ function debugError(message: string, error: any) {
     }
 }
 
-const CLOUD_FUNCTION_BASE_URL = 'https://us-central1-pathway-email-bot-6543.cloudfunctions.net';
+const CLOUD_FUNCTION_BASE_URL = 'https://peb-service-cnvksk3jla-uc.a.run.app';
 
 /**
  * Send a magic link to the user's email via our Cloud Function.

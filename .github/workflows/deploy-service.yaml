@@ -16,8 +16,6 @@ on:
 env:
   PROJECT_ID: 'pathway-email-bot-6543'
   REGION: 'us-central1'
-  FUNCTION_NAME: 'process_email'
-  TOPIC_NAME: 'email-notifications'
 
 jobs:
   deploy:
@@ -57,60 +55,16 @@ jobs:
         with:
           credentials_json: '${{ secrets.GCP_DEPLOYER_KEY }}'
 
-      - name: Deploy process_email to Cloud Functions (Gen 2)
+      - name: Deploy peb-service to Cloud Run
         run: |
-          gcloud functions deploy ${{ env.FUNCTION_NAME }} \
-            --gen2 \
+          gcloud run deploy peb-service \
             --region=${{ env.REGION }} \
-            --runtime=python311 \
             --source=service \
-            --entry-point=process_email \
-            --trigger-topic=${{ env.TOPIC_NAME }} \
-            --memory=512Mi \
-            --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com \
-            --set-secrets=OPENAI_API_KEY=openai-api-key:latest,GMAIL_CLIENT_ID=gmail-client-id:latest,GMAIL_CLIENT_SECRET=gmail-client-secret:latest,GMAIL_REFRESH_TOKEN=gmail-refresh-token-bot:latest
-
-      - name: Deploy start_scenario to Cloud Functions (Gen 2)
-        run: |
-          gcloud functions deploy start_scenario \
-            --gen2 \
-            --region=${{ env.REGION }} \
-            --runtime=python311 \
-            --source=service \
-            --entry-point=start_scenario \
-            --trigger-http \
             --allow-unauthenticated \
             --memory=512Mi \
+            --min-instances=1 \
             --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com \
             --set-secrets=OPENAI_API_KEY=openai-api-key:latest,GMAIL_CLIENT_ID=gmail-client-id:latest,GMAIL_CLIENT_SECRET=gmail-client-secret:latest,GMAIL_REFRESH_TOKEN=gmail-refresh-token-bot:latest
-
-      - name: Deploy send_magic_link to Cloud Functions (Gen 2)
-        run: |
-          gcloud functions deploy send_magic_link \
-            --gen2 \
-            --region=${{ env.REGION }} \
-            --runtime=python311 \
-            --source=service \
-            --entry-point=send_magic_link \
-            --trigger-http \
-            --allow-unauthenticated \
-            --memory=256Mi \
-            --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com \
-            --set-secrets=OPENAI_API_KEY=openai-api-key:latest,GMAIL_CLIENT_ID=gmail-client-id:latest,GMAIL_CLIENT_SECRET=gmail-client-secret:latest,GMAIL_REFRESH_TOKEN=gmail-refresh-token-bot:latest
-
-      - name: Deploy submit_feedback to Cloud Functions (Gen 2)
-        run: |
-          gcloud functions deploy submit_feedback \
-            --gen2 \
-            --region=${{ env.REGION }} \
-            --runtime=python311 \
-            --source=service \
-            --entry-point=submit_feedback \
-            --trigger-http \
-            --allow-unauthenticated \
-            --memory=256Mi \
-            --service-account=peb-runtime@pathway-email-bot-6543.iam.gserviceaccount.com \
-            --set-secrets=GMAIL_CLIENT_ID=gmail-client-id:latest,GMAIL_CLIENT_SECRET=gmail-client-secret:latest,GMAIL_REFRESH_TOKEN=gmail-refresh-token-bot:latest
 
       - name: Auth as test runner (post-deploy)
         uses: google-github-actions/auth@v2

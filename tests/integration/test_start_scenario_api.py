@@ -10,12 +10,14 @@ ID token and verifies:
 Run:  python -m pytest tests/integration/test_start_scenario_api.py -v --timeout=60
 """
 
+import os
 import pytest
 import requests as http_requests
 
 PROJECT_ID = "pathway-email-bot-6543"
 REGION = "us-central1"
-START_SCENARIO_URL = f"https://{REGION}-{PROJECT_ID}.cloudfunctions.net/start_scenario"
+SERVICE_URL = os.environ.get("PEB_SERVICE_URL", "https://peb-service-cnvksk3jla-uc.a.run.app")
+START_SCENARIO_URL = f"{SERVICE_URL}/start_scenario"
 TEST_EMAIL = "michaeltreynolds.test@gmail.com"
 SCENARIO_ID = "missed_remote_standup"
 

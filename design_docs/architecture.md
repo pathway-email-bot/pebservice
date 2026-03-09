@@ -5,10 +5,10 @@
 ### Why GitHub Pages for the Portal?
 - Free hosting with automatic HTTPS
 - Simple deployment via GitHub Actions
-- No server management — static site talks directly to Firebase + Cloud Functions
+- No server management — static site talks directly to Firebase + Cloud Run
 
 ### Why Same GCP Project for Everything?
-- Unified IAM (Cloud Functions access Firestore without cross-project bindings)
+- Unified IAM (Cloud Run accesses Firestore without cross-project bindings)
 - Single billing account
 - Simpler security configuration
 

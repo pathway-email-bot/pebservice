@@ -35,25 +35,26 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-import functions_framework
-from flask import Request
+from flask import Flask, Request, request, jsonify
+
+app = Flask(__name__)
 
 import firebase_admin
 
-from .email_agent.scenario_loader import load_scenario
-from .email_agent.rubric_loader import load_rubric
-from .email_agent.scenario_models import InteractionType
-from .email_agent.email_agent import EmailAgent, EmailMessage
-from .logging_utils import log_function, setup_cloud_logging
-from .gmail_client import (
+from email_agent.scenario_loader import load_scenario
+from email_agent.rubric_loader import load_rubric
+from email_agent.scenario_models import InteractionType
+from email_agent.email_agent import EmailAgent, EmailMessage
+from logging_utils import log_function, setup_cloud_logging
+from gmail_client import (
     get_gmail_service,
     send_reply,
     build_mime_message,
     ensure_watch,
     extract_email_body,
 )
-from .secrets import get_openai_api_key
-from .auth import verify_token
+from secret_utils import get_openai_api_key
+from auth import verify_token
 
 # Setup Logging — uses structured JSON on GCP, plain text locally
 setup_cloud_logging()
@@ -115,15 +116,18 @@ def _personalize_body(body: str, first_name: str | None) -> str:
 # Cloud Event Function: process_email
 # ============================================================================
 
-@functions_framework.cloud_event
+@app.route('/process_email', methods=['POST'])
 @log_function
-def process_email(cloud_event):
-    """Triggered from a message on a Cloud Pub/Sub topic.
+def process_email():
+    """Triggered by Pub/Sub Push Subscription.
 
     The message usually comes from Gmail push notifications.
     """
-    data = cloud_event.data
-    pubsub_message = data.get("message", {})
+    envelope = request.get_json()
+    if not envelope or 'message' not in envelope:
+        return 'Bad Request: invalid Pub/Sub message format', 400
+
+    pubsub_message = envelope['message']
 
     if "data" in pubsub_message:
         message_data = base64.b64decode(pubsub_message["data"]).decode("utf-8")
@@ -145,7 +149,7 @@ def process_email(cloud_event):
                 return "OK"
 
             try:
-                from .firestore_client import get_last_history_id, update_last_history_id
+                from firestore_client import get_last_history_id, update_last_history_id
 
                 # Use stored cursor (not notification's historyId) to catch ALL new messages
                 stored_id = get_last_history_id()
@@ -199,7 +203,7 @@ def process_email(cloud_event):
 def process_single_message(service, msg):
     """Parse email content and grade it."""
     try:
-        from .firestore_client import get_active_scenario, update_attempt_graded, claim_attempt_for_grading
+        from firestore_client import get_active_scenario, update_attempt_graded, claim_attempt_for_grading
 
         headers = msg.get('payload', {}).get('headers', [])
         subject = get_header(headers, 'Subject', 'No Subject')
@@ -333,9 +337,9 @@ def process_single_message(service, msg):
 # HTTP Cloud Function: start_scenario
 # ============================================================================
 
-@functions_framework.http
+@app.route('/start_scenario', methods=['POST', 'OPTIONS'])
 @log_function
-def start_scenario(request: Request):
+def start_scenario():
     """HTTP Cloud Function to start a scenario for a student.
 
     Handles both INITIATE and REPLY scenarios:
@@ -394,7 +398,7 @@ def start_scenario(request: Request):
             return {'error': 'Cannot start scenario for another user'}, 403, cors_headers
 
         # Load scenario
-        from .firestore_client import get_firestore_client, create_attempt
+        from firestore_client import get_firestore_client, create_attempt
         db = get_firestore_client()
         scenario_path = BASE_DIR / 'email_agent' / 'scenarios' / f'{scenario_id}.json'
         if not scenario_path.exists():
@@ -510,9 +514,9 @@ def _check_rate_limit(email: str, client_ip: str) -> str | None:
     return None  # OK
 
 
-@functions_framework.http
+@app.route('/send_magic_link', methods=['POST', 'OPTIONS'])
 @log_function
-def send_magic_link(request: Request):
+def send_magic_link():
     """HTTP Cloud Function to send a sign-in magic link via Gmail API.
 
     Replaces Firebase's default magic link email (sent from the shared
@@ -699,9 +703,9 @@ def _check_feedback_rate_limit(key: str) -> str | None:
     return None  # OK
 
 
-@functions_framework.http
+@app.route('/submit_feedback', methods=['POST', 'OPTIONS'])
 @log_function
-def submit_feedback(request: Request):
+def submit_feedback():
     """HTTP Cloud Function to receive user feedback and email it to the bot inbox.
 
     Unauthenticated — anyone can submit feedback (login page users too).
@@ -871,4 +875,16 @@ def submit_feedback(request: Request):
     except Exception as e:
         logger.error(f"Error in submit_feedback: {e}", exc_info=True)
         return {'error': 'Failed to send feedback. Please try again.'}, 500, cors_headers
+
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Simple health check endpoint used to warm up the container."""
+    return "OK", 200
+
+
+if __name__ == "__main__":
+    # For local testing only. In production, gunicorn is used.
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
 

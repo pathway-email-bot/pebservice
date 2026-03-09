@@ -3,6 +3,7 @@ import { renderLoginPage } from './pages/login';
 import { renderScenariosPage } from './pages/scenarios';
 import { onAuthChange, completeMagicLinkSignIn } from './auth';
 import { injectFeedbackLink } from './feedback';
+import { warmUpServices } from './warmup';
 
 /**
  * Routing is auth-state driven, not URL-path driven.
@@ -23,6 +24,9 @@ import { injectFeedbackLink } from './feedback';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
 async function boot() {
+    // Wake up Cloud Functions in background (fire-and-forget, debounced)
+    warmUpServices();
+
     // Inject the feedback link once (persists across page transitions)
     injectFeedbackLink();
 

@@ -13,10 +13,18 @@ This means:
 """
 
 import os
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+SERVICE_DIR = REPO_ROOT / "service"
 TEST_KEY = REPO_ROOT / "test-runner-key.secret.json"
+
+# Add service/ to sys.path so that absolute imports inside main.py
+# (e.g. `from email_agent`, `from gmail_client`) resolve correctly
+# when tests import via `from service.main import ...`
+if str(SERVICE_DIR) not in sys.path:
+    sys.path.insert(0, str(SERVICE_DIR))
 
 
 def pytest_configure(config):

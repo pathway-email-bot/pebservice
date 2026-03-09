@@ -11,7 +11,7 @@ import os
 
 from google.cloud import secretmanager
 
-from .logging_utils import log_function
+from logging_utils import log_function
 
 logger = logging.getLogger(__name__)
 

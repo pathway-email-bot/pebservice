@@ -8,7 +8,7 @@
 
 import { getCurrentUser } from './auth';
 
-const CLOUD_FUNCTION_BASE_URL = 'https://us-central1-pathway-email-bot-6543.cloudfunctions.net';
+const CLOUD_FUNCTION_BASE_URL = 'https://peb-service-cnvksk3jla-uc.a.run.app';
 
 // Capture recent console errors for context
 const _recentErrors: string[] = [];

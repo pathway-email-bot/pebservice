@@ -18,8 +18,8 @@ from google.cloud import firestore as firestore_lib
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
-from .logging_utils import log_function
-from .secrets import get_secret
+from logging_utils import log_function
+from secret_utils import get_secret
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ def send_reply(service, original_msg, reply_text):
         thread_id = original_msg["threadId"]
         headers = original_msg["payload"]["headers"]
 
-        from .main import get_header  # avoid circular at module level
+        from main import get_header  # avoid circular at module level
 
         subject = get_header(headers, "Subject", "No Subject")
         sender_email = get_header(headers, "From", "")
@@ -240,7 +240,7 @@ def ensure_watch(gmail_service):
     if _watch_expires_at and _watch_expires_at > now + _WATCH_RENEW_BUFFER:
         return
 
-    from .firestore_client import get_firestore_client
+    from firestore_client import get_firestore_client
 
     db = get_firestore_client()
     doc_ref = db.collection(*_WATCH_DOC_PATH[:1]).document(_WATCH_DOC_PATH[1])

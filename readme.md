@@ -13,18 +13,18 @@ Students choose a workplace scenario, write an email, and receive rubric-based f
 ```mermaid
 graph TB
     Student[👤 Student] -->|magic link sign-in| Portal[🌐 Student Portal<br/>GitHub Pages]
-    Portal -->|POST /start_scenario| StartFunc[⚡ start_scenario<br/>HTTP Cloud Function]
-    StartFunc -->|creates attempt| Firestore[(🗄️ Firestore)]
-    StartFunc -->|sends starter email<br/>for REPLY scenarios| Gmail[📧 Gmail<br/>pathwayemailbot@gmail.com]
+    Portal -->|POST /start_scenario| RunService[⚡ peb-service<br/>Cloud Run]
+    RunService -->|creates attempt| Firestore[(🗄️ Firestore)]
+    RunService -->|sends starter email<br/>for REPLY scenarios| Gmail[📧 Gmail<br/>pathwayemailbot@gmail.com]
     
     Student -->|sends email| Gmail
     Gmail -->|push notification| PubSub[📬 Pub/Sub]
-    PubSub -->|triggers| ProcessFunc[⚡ process_email<br/>Event Cloud Function]
+    PubSub -->|push subscription| RunService
     
-    ProcessFunc -->|queries active scenario| Firestore
-    ProcessFunc -->|grades email| OpenAI[🤖 OpenAI GPT-4o]
-    ProcessFunc -->|sends feedback reply| Gmail
-    ProcessFunc -->|stores score + feedback| Firestore
+    RunService -->|queries active scenario| Firestore
+    RunService -->|grades email| OpenAI[🤖 OpenAI GPT-4o]
+    RunService -->|sends feedback reply| Gmail
+    RunService -->|stores score + feedback| Firestore
     
     Portal -->|reads attempts| Firestore
     Portal -->|displays results| Student
@@ -34,8 +34,7 @@ graph TB
     style Portal fill:#fff4e1
     style Gmail fill:#ea4335
     style PubSub fill:#4285f4
-    style StartFunc fill:#34a853
-    style ProcessFunc fill:#34a853
+    style RunService fill:#34a853
     style Firestore fill:#fbbc04
     style OpenAI fill:#10a37f
     style FireAuth fill:#ff9800
@@ -48,11 +47,11 @@ sequenceDiagram
     participant S as 👤 Student
     participant P as 🌐 Portal
     participant FA as 🔑 Firebase Auth
-    participant SF as ⚡ start_scenario
+    participant SF as ⚡ Cloud Run (start_scenario)
     participant F as 🗄️ Firestore
     participant G as 📧 Gmail
     participant PS as 📬 Pub/Sub
-    participant PE as ⚡ process_email
+    participant PE as ⚡ Cloud Run (process_email)
     participant AI as 🤖 OpenAI
 
     Note over S,P: Sign In
@@ -95,13 +94,13 @@ sequenceDiagram
 
 | Component | Technology |
 |-----------|-----------|
-| **Backend** | Python 3.11, Google Cloud Functions (Gen 2) |
+| **Backend** | Python 3.11, Google Cloud Run, Flask |
 | **Frontend** | TypeScript, Vite |
 | **Database** | Firestore (NoSQL) |
 | **AI** | OpenAI GPT-4o |
 | **Email** | Gmail API with OAuth 2.0 |
 | **Messaging** | Google Cloud Pub/Sub |
-| **Hosting** | GitHub Pages (Portal), Cloud Functions (Service) |
+| **Hosting** | GitHub Pages (Portal), Cloud Run (Service) |
 | **CI/CD** | GitHub Actions |
 
 ---
@@ -110,8 +109,8 @@ sequenceDiagram
 
 ```
 pebservice/
-├── service/                    # Backend (Python Cloud Functions)
-│   ├── main.py                # Cloud Function entry points
+├── service/                    # Backend (Flask App on Cloud Run)
+│   ├── main.py                # Flask app entry point
 │   ├── gmail_client.py        # Gmail API wrapper
 │   ├── email_agent/           # AI grading logic
 │   └── requirements.txt
@@ -134,7 +133,7 @@ pebservice/
 │   ├── gmail_api_quota_audit.md  # Capacity planning
 │   └── todo.md
 ├── .github/workflows/
-│   ├── deploy-service.yaml   # service/** → Cloud Functions
+│   ├── deploy-service.yaml   # service/** → Cloud Run
 │   └── deploy-portal.yaml    # portal/** → GitHub Pages
 └── firestore.rules           # Database security rules
 ```
@@ -183,15 +182,13 @@ python -m pytest tests/integration/ -v --timeout=180
 ## Deployment
 
 **Automatic** via GitHub Actions — push to `main` and path filters handle the rest:
-- `service/**` changes → deploys Cloud Functions
+- `service/**` changes → deploys Cloud Run
 - `portal/**` changes → deploys to GitHub Pages
 
 **Manual**:
 ```powershell
-# Deploy service (both functions need 512Mi memory)
-gcloud functions deploy process_email --gen2 --region=us-central1 --runtime=python311 --source=./service --entry-point=process_email --trigger-topic=email-notifications --memory=512Mi
-
-gcloud functions deploy start_scenario --gen2 --region=us-central1 --runtime=python311 --source=./service --entry-point=start_scenario --trigger-http --allow-unauthenticated --memory=512Mi
+# Deploy service
+gcloud run deploy peb-service --region=us-central1 --source=./service --allow-unauthenticated --memory=512Mi
 ```
 
 ---

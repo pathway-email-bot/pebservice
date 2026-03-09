@@ -7,7 +7,7 @@ import logging
 from flask import Request
 from firebase_admin import auth as firebase_auth
 
-from .logging_utils import log_function
+from logging_utils import log_function
 
 logger = logging.getLogger(__name__)
 

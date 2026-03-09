@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional
 import uuid
 
-from .logging_utils import log_function
+from logging_utils import log_function
 
 # Module-level cached client
 _db: firestore.Client | None = None

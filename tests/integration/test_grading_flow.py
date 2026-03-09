@@ -15,9 +15,12 @@ import uuid
 
 import pytest
 
+import os
+
 PROJECT_ID = "pathway-email-bot-6543"
 REGION = "us-central1"
-START_SCENARIO_URL = f"https://{REGION}-{PROJECT_ID}.cloudfunctions.net/start_scenario"
+SERVICE_URL = os.environ.get("PEB_SERVICE_URL", "https://peb-service-cnvksk3jla-uc.a.run.app")
+START_SCENARIO_URL = f"{SERVICE_URL}/start_scenario"
 TEST_EMAIL = "michaeltreynolds.test@gmail.com"
 BOT_EMAIL = "pathwayemailbot@gmail.com"
 SCENARIO_ID = "missed_remote_standup"

@@ -21,15 +21,20 @@ SCENARIO_ID = "missed_remote_standup"
 # ── Helpers ──────────────────────────────────────────────────────────
 
 
-def _make_request(*, body: dict = None, token: str = None, method: str = "POST") -> MagicMock:
-    """Build a mock Flask Request with the given body and auth token."""
-    request = MagicMock()
-    request.method = method
-    request.get_json.return_value = body or {}
-    request.headers = {}
+def _call_start_scenario(*, body: dict = None, token: str = None, method: str = "POST"):
+    """Call the /start_scenario endpoint via the Flask test client."""
+    from service.main import app
+    headers = {}
     if token:
-        request.headers["Authorization"] = f"Bearer {token}"
-    return request
+        headers["Authorization"] = f"Bearer {token}"
+    
+    with app.test_client() as client:
+        if method == "OPTIONS":
+            resp = client.options("/start_scenario", headers=headers)
+            return resp.get_data(), resp.status_code, resp.headers
+        else:
+            resp = client.post("/start_scenario", json=body or {}, headers=headers)
+            return resp.get_json() if resp.is_json else resp.get_data(), resp.status_code, resp.headers
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────
@@ -65,13 +70,10 @@ class TestStartScenarioLocal:
 
     def test_successful_scenario_start(self, id_token, db):
         """Valid request creates a Firestore attempt and returns success."""
-        from service.main import start_scenario
-
-        request = _make_request(
+        response, status, headers = _call_start_scenario(
             body={"email": TEST_EMAIL, "scenarioId": SCENARIO_ID},
             token=id_token,
         )
-        response, status, headers = start_scenario(request)
 
         assert status == 200, f"Expected 200, got {status}: {response}"
         assert response["success"] is True
@@ -94,42 +96,29 @@ class TestStartScenarioLocal:
 
     def test_missing_token_returns_401(self):
         """Request without auth token returns 401."""
-        from service.main import start_scenario
-
-        request = _make_request(
+        response, status, headers = _call_start_scenario(
             body={"email": TEST_EMAIL, "scenarioId": SCENARIO_ID},
         )
-        response, status, headers = start_scenario(request)
         assert status == 401
 
     def test_invalid_scenario_returns_404(self, id_token):
         """Request with nonexistent scenario returns 404."""
-        from service.main import start_scenario
-
-        request = _make_request(
+        response, status, headers = _call_start_scenario(
             body={"email": TEST_EMAIL, "scenarioId": "totally_fake_scenario"},
             token=id_token,
         )
-        response, status, headers = start_scenario(request)
         assert status == 404
 
     def test_email_mismatch_returns_403(self, id_token):
         """Request where email doesn't match token returns 403."""
-        from service.main import start_scenario
-
-        request = _make_request(
+        response, status, headers = _call_start_scenario(
             body={"email": "impersonator@evil.com", "scenarioId": SCENARIO_ID},
             token=id_token,
         )
-        response, status, headers = start_scenario(request)
         assert status == 403
 
     def test_cors_preflight_returns_204(self):
         """OPTIONS request returns 204 with CORS headers."""
-        from service.main import start_scenario
-
-        request = _make_request(method="OPTIONS")
-        result = start_scenario(request)
-        # CORS preflight returns a tuple: ('', 204, headers)
-        assert result[1] == 204
-        assert "Access-Control-Allow-Origin" in result[2]
+        data, status, headers = _call_start_scenario(method="OPTIONS")
+        assert status == 204
+        assert "Access-Control-Allow-Origin" in headers

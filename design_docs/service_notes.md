@@ -9,9 +9,8 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 | Resource | Name / Value | Description |
 |:---|:---|:---|
 | **Pub/Sub Topic** | `email-notifications` | Receives Gmail push notifications |
-| **Pub/Sub Subscription** | `eventarc-us-central1-process-email-479061-sub-493` | Eventarc-managed, triggers Cloud Function |
-| **Cloud Function** | `process_email` | Core AI logic and email handler (**512Mi memory required**) |
-| **Cloud Function** | `start_scenario` | HTTP endpoint for starting scenarios (**512Mi memory required** — reply scenarios use OpenAI) |
+| **Pub/Sub Subscription** | `process-email-push` | Push subscription, triggers Cloud Run endpoint |
+| **Cloud Run Service** | `peb-service` | Consolidated Flask app containing core AI logic and HTTP endpoints (**512Mi memory required**) |
 | **Firestore Database** | `pathway` | Stores user attempts, active scenarios, and grading results |
 | **Service Account** | `687061619628-compute@developer.gserviceaccount.com` | Default Compute SA used by functions |
 | **AI Model** | `gpt-4o` (OpenAI) | LLM for grading and responses |
@@ -20,9 +19,8 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 
 ### Required APIs
 - `gmail.googleapis.com` - Read/send emails
-- `cloudfunctions.googleapis.com` - Cloud Functions
 - `pubsub.googleapis.com` - Pub/Sub messaging
-- `run.googleapis.com` - Cloud Run (Gen 2 functions)
+- `run.googleapis.com` - Cloud Run
 - `cloudbuild.googleapis.com` - Build and deploy
 - `secretmanager.googleapis.com` - Secret Manager
 - `firestore.googleapis.com` - Firestore database
@@ -33,11 +31,11 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 
 | Service Account | Purpose | Roles | Key / Auth |
 |---|---|---|---|
-| `peb-deployer@…` | **CI/CD deploy** — deploys Cloud Functions and Firestore rules from GitHub Actions | `cloudfunctions.developer`, `run.admin`, `artifactregistry.writer`, `iam.serviceAccountUser`, `logging.logWriter`, `pubsub.editor`, `pubsub.subscriber`, `serviceusage.serviceUsageConsumer`, `firebaserules.admin` | `deployer-key.secret.json` / GitHub secret `GCP_DEPLOYER_KEY` |
-| `peb-test-runner@…` | **Integration tests** — used by both CI and local dev | `secretmanager.secretAccessor`, `datastore.user`, `datastore.owner`*, `cloudfunctions.viewer` | `test-runner-key.secret.json` (local) / SA impersonation (CI) |
-| `peb-runtime@…` | **Cloud Function runtime** — identity both functions run as | `secretmanager.secretAccessor`, `datastore.user`, `datastore.owner`* | Automatic (GCP metadata server) |
+| `peb-deployer@…` | **CI/CD deploy** — deploys Cloud Run and Firestore rules from GitHub Actions | `run.admin`, `artifactregistry.writer`, `iam.serviceAccountUser`, `logging.logWriter`, `pubsub.editor`, `pubsub.subscriber`, `serviceusage.serviceUsageConsumer`, `firebaserules.admin` | `deployer-key.secret.json` / GitHub secret `GCP_DEPLOYER_KEY` |
+| `peb-test-runner@…` | **Integration tests** — used by both CI and local dev | `secretmanager.secretAccessor`, `datastore.user`, `datastore.owner`* | `test-runner-key.secret.json` (local) / SA impersonation (CI) |
+| `peb-runtime@…` | **Cloud Run runtime** — identity the service runs as | `secretmanager.secretAccessor`, `datastore.user`, `datastore.owner`* | Automatic (GCP metadata server) |
 | `firebase-adminsdk-fbsvc@…` | Firebase Admin SDK agent (**Google-managed, do not modify**) | `firebase.sdkAdminServiceAgent`, `firebaseauth.admin`, `iam.serviceAccountTokenCreator` | — |
-| `service-687061619628@gcp-sa-pubsub.iam.gserviceaccount.com` | **Pub/Sub service agent** — invokes `process-email` Cloud Run service | `run.invoker` on `process-email` service | — (Google-managed) |
+| `service-687061619628@gcp-sa-pubsub.iam.gserviceaccount.com` | **Pub/Sub service agent** — invokes `peb-service` Cloud Run service | `run.invoker` on `peb-service` | — (Google-managed) |
 
 \* `datastore.owner` is required because the `pathway` database is a named database (not `(default)`). `datastore.user` alone is insufficient — GCP IAM quirk. See todo.md.
 
@@ -57,7 +55,7 @@ Google client libraries check credentials in order: `GOOGLE_APPLICATION_CREDENTI
 
 ## Firestore Database
 
-**Location**: `us-central` (same region as Cloud Functions)
+**Location**: `us-central` (same region as Cloud Run)
 **Database name**: `pathway` (named database, NOT `(default)`)
 
 > **⚠️ Named Database Note**: Using a named database (`pathway`) instead of `(default)` adds IAM
@@ -103,7 +101,7 @@ Security rules are defined in `firestore.rules` and enforce:
   - User docs: `firstName`, `activeScenarioId`, `activeAttemptId`
   - Attempts: create with `scenarioId`/`status`/`startedAt`, update only `status`
 - **Name validation**: `firstName` must be a string, 1-100 chars, no `<` or `>` (XSS prevention)
-- Cloud Functions use Admin SDK (bypass security rules) for score/feedback writes
+- Cloud Run uses Admin SDK (bypass security rules) for score/feedback writes
 
 Deploy rules:
 ```powershell
@@ -144,7 +142,7 @@ The Gmail API uses push notifications via `users.watch()`. The watch expires eve
 > ```json
 > {"refresh_token": "1//06...", "generated_at": "2026-...", "role": "bot", "email": "..."}
 > ```
-> The Cloud Function (`main.py:get_gmail_service`) parses this JSON to extract `refresh_token`.
+> The Cloud Run service (`main.py:get_gmail_service`) parses this JSON to extract `refresh_token`.
 > All other secrets are stored as plain strings. All values are `.strip()`'d on read.
 
 ### Syncing Secrets
@@ -181,11 +179,8 @@ Use `setup_infra.ps1` to create the project, enable APIs, and configure the serv
 ## Deployment
 
 ```powershell
-# Deploy process_email (must include --memory=512Mi)
-gcloud functions deploy process_email --gen2 --region=us-central1 --runtime=python311 --source=service --entry-point=process_email --trigger-topic=email-notifications --memory=512Mi --project=pathway-email-bot-6543
-
-# Deploy start_scenario (also needs 512Mi — reply scenarios load OpenAI)
-gcloud functions deploy start_scenario --gen2 --region=us-central1 --runtime=python311 --source=service --entry-point=start_scenario --trigger-http --allow-unauthenticated --memory=512Mi --project=pathway-email-bot-6543
+# Deploy peb-service (must include --memory=512Mi)
+gcloud run deploy peb-service --region=us-central1 --source=service --allow-unauthenticated --min-instances=1 --memory=512Mi --project=pathway-email-bot-6543
 ```
 
 > **Note**: Default memory (256Mi) causes OOM — the OpenAI SDK + Gmail API + Firebase Admin + Secret Manager require ~300-400 MiB at runtime. Both functions need `--set-secrets` for OPENAI_API_KEY, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN (configured in `deploy-service.yaml`).
@@ -216,10 +211,7 @@ gcloud secrets get-iam-policy gmail-client-secret
 gcloud secrets get-iam-policy gmail-refresh-token-bot
 
 # Check what service account a function uses
-gcloud functions describe process_email --gen2 --region=us-central1 --format="value(serviceConfig.serviceAccountEmail)"
-gcloud functions describe start_scenario --gen2 --region=us-central1 --format="value(serviceConfig.serviceAccountEmail)"
-gcloud functions describe send_magic_link --gen2 --region=us-central1 --format="value(serviceConfig.serviceAccountEmail)"
-gcloud functions describe submit_feedback --gen2 --region=us-central1 --format="value(serviceConfig.serviceAccountEmail)"
+gcloud run services describe peb-service --region=us-central1 --format="value(template.serviceAccount)"
 ```
 
 ### Common Issues
