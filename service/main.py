@@ -55,7 +55,7 @@ from gmail_client import (
     rate_limited_send,
 )
 from secret_utils import get_openai_api_key
-from auth import verify_token
+from auth import verify_token, verify_pubsub_token
 
 # Setup Logging — uses structured JSON on GCP, plain text locally
 setup_cloud_logging()
@@ -123,7 +123,13 @@ def process_email():
     """Triggered by Pub/Sub Push Subscription.
 
     The message usually comes from Gmail push notifications.
+    Secured via Pub/Sub OIDC token verification.
     """
+    # Verify Pub/Sub OIDC token (skip in local dev where K_SERVICE is unset)
+    if os.environ.get('K_SERVICE') and not verify_pubsub_token(request):
+        logger.warning("Rejected /process_email: invalid Pub/Sub token")
+        return 'Forbidden', 403
+
     envelope = request.get_json()
     if not envelope or 'message' not in envelope:
         return 'Bad Request: invalid Pub/Sub message format', 400
