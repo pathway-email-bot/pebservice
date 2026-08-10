@@ -227,7 +227,7 @@ class EmailAgent:
     def __init__(
         self,
         *,
-        model: str = "gpt-4o",
+        model: str = "gpt-4.1",
         temperature: float = 0.2,
         base_url: str | None = None,
         scenario: Scenario,

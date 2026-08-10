@@ -266,7 +266,7 @@ def process_single_message(service, msg):
         logger.info(f"Grading email for scenario {scenario_id} from {sender_email}...")
 
         agent = EmailAgent(
-            model="gpt-4o",
+            model="gpt-4.1",
             temperature=0.2,
             scenario=scenario,
             api_key=api_key

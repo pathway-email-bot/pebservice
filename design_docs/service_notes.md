@@ -13,7 +13,7 @@ All resources are hosted in project **`pathway-email-bot-6543`**.
 | **Cloud Run Service** | `peb-service` | Consolidated Flask app containing core AI logic and HTTP endpoints (**512Mi memory required**) |
 | **Firestore Database** | `pathway` | Stores user attempts, active scenarios, and grading results |
 | **Service Account** | `687061619628-compute@developer.gserviceaccount.com` | Default Compute SA used by functions |
-| **AI Model** | `gpt-4o` (OpenAI) | LLM for grading and responses |
+| **AI Model** | `gpt-4.1` (OpenAI) | LLM for grading and responses |
 | **Secret Manager** | `gmail-client-id`, `gmail-client-secret`, `gmail-refresh-token-bot`, `openai-api-key` | OAuth credentials and API keys |
 | **GitHub Pages** | `https://pathway-email-bot.github.io/pebservice/` | Student portal (Vite + TypeScript) |
 
